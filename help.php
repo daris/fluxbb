@@ -26,7 +26,7 @@ define('PUN_ACTIVE_PAGE', 'help');
 require PUN_ROOT.'header.php';
 
 ?>
-<h2><span><?php echo $lang->t('BBCode') ?></span></h2>
+<h2><span><?php echo $lang->t('BBCode help') ?></span></h2>
 <div class="box">
 	<div class="inbox">
 		<p><a name="bbcode"></a><?php echo $lang->t('BBCode info 1') ?></p>
@@ -55,7 +55,7 @@ require PUN_ROOT.'header.php';
 		<p><?php echo $lang->t('Links info') ?></p>
 		<p><code>[url=<?php echo pun_htmlspecialchars(get_base_url(true).'/') ?>]<?php echo pun_htmlspecialchars($pun_config['o_board_title']) ?>[/url]</code> <?php echo $lang->t('produces') ?> <samp><a href="<?php echo pun_htmlspecialchars(get_base_url(true).'/') ?>"><?php echo pun_htmlspecialchars($pun_config['o_board_title']) ?></a></samp></p>
 		<p><code>[url]<?php echo pun_htmlspecialchars(get_base_url(true).'/') ?>[/url]</code> <?php echo $lang->t('produces') ?> <samp><a href="<?php echo pun_htmlspecialchars(get_base_url(true).'/') ?>"><?php echo pun_htmlspecialchars(get_base_url(true).'/') ?></a></samp></p>
-		<p><code>[url=/help.php]<?php echo $lang->t('This help page') ?>[/url]</code> <?php echo $lang->t('produces') ?> <samp><a href="<?php echo get_base_url(true).'/help.php' ?>"><?php echo $lang->t('This help page') ?></a></samp></p>
+		<p><code>[url=/help.php]<?php echo $lang->t('This help page') ?>[/url]</code> <?php echo $lang->t('produces') ?> <samp><a href="<?php echo pun_htmlspecialchars(get_base_url(true)).'/help.php' ?>"><?php echo $lang->t('This help page') ?></a></samp></p>
 		<p><code>[email]myname@mydomain.com[/email]</code> <?php echo $lang->t('produces') ?> <samp><a href="mailto:myname@mydomain.com">myname@mydomain.com</a></samp></p>
 		<p><code>[email=myname@mydomain.com]<?php echo $lang->t('My email address') ?>[/email]</code> <?php echo $lang->t('produces') ?> <samp><a href="mailto:myname@mydomain.com"><?php echo $lang->t('My email address') ?></a></samp></p>
 		<p><code>[topic=1]<?php echo $lang->t('Test topic') ?>[/topic]</code> <?php echo $lang->t('produces') ?> <samp><a href="<?php echo pun_htmlspecialchars(get_base_url(true).'/viewtopic.php?id=1') ?>"><?php echo $lang->t('Test topic') ?></a></samp></p>
@@ -129,7 +129,7 @@ require PUN_ROOT.'header.php';
 		<p><code>[b][u]<?php echo $lang->t('Bold, underlined text') ?>[/u][/b]</code> <?php echo $lang->t('produces') ?> <samp><strong><span class="bbu"><?php echo $lang->t('Bold, underlined text') ?></span></strong></samp></p>
 	</div>
 </div>
-<h2><span><?php echo $lang->t('Smilies') ?></span></h2>
+<h2><span><?php echo $lang->t('Smilies help') ?></span></h2>
 <div class="box">
 	<div class="inbox">
 		<p><a name="smilies"></a><?php echo $lang->t('Smilies info') ?></p>

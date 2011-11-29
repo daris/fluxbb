@@ -53,7 +53,7 @@ msgid "Username 4"
 msgstr "Usernames may not be in the form of an IP address."
 
 msgid "Username 5"
-msgstr "Usernames may not contain all the characters ', \" and [ or ] at once.'"
+msgstr "Usernames may not contain all the characters ', \" and [ or ] at once."
 
 msgid "Username 6"
 msgstr "Usernames may not contain any of the text formatting tags (BBCode) that the forum uses."
@@ -263,7 +263,7 @@ msgid "Prefix reserved"
 msgstr "The table prefix 'sqlite_' is reserved for use by the SQLite engine. Please choose a different prefix"
 
 msgid "Existing table error"
-msgstr "A table called '%susers' is already present in the database '%s'. This could mean that FluxBB is already installed or that another piece of software is installed and is occupying one or more of the table names FluxBB requires. If you want to install multiple copies of FluxBB in the same database, you must choose a different table prefix"
+msgstr "A table called '%s' is already present in the database '%s'. This could mean that FluxBB is already installed or that another piece of software is installed and is occupying one or more of the table names FluxBB requires. If you want to install multiple copies of FluxBB in the same database, you must choose a different table prefix"
 
 msgid "InnoDB off"
 msgstr "InnoDB does not seem to be enabled. Please choose a database layer that does not have InnoDB support, or enable InnoDB on your MySQL server"
@@ -295,19 +295,19 @@ msgstr "Members"
 msgid "Member"
 msgstr "Member"
 
-msgid "Announcement"
+msgid "Enter announcement"
 msgstr "Enter your announcement here."
 
-msgid "Rules"
+msgid "Enter rules"
 msgstr "Enter your rules here"
 
 msgid "Maintenance message"
 msgstr "The forums are temporarily down for maintenance. Please try again in a few minutes."
 
 msgid "Test post"
-msgstr "Test post"
+msgstr "Test topic"
 
-msgid "Message"
+msgid "Test post example"
 msgstr "If you are looking at this (which I guess you are), the install of FluxBB appears to have worked! Now log in and head over to the administration control panel to configure your forum."
 
 msgid "Test category"

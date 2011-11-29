@@ -91,9 +91,9 @@ function check_cookie(&$pun_user)
 		// Check if there's a user with the user ID and password hash from the cookie
 		$query = $db->select(array('user' => 'u.*', 'group' => 'g.*', 'logged' => 'o.logged', 'idle' => 'o.idle'), 'users AS u');
 
-		$query->InnerJoin('g', 'groups AS g', 'u.group_id = g.g_id');
+		$query->innerJoin('g', 'groups AS g', 'u.group_id = g.g_id');
 
-		$query->LeftJoin('o', 'online AS o', 'o.user_id = u.id');
+		$query->leftJoin('o', 'online AS o', 'o.user_id = u.id');
 
 		$query->where = 'u.id = :user_id';
 
@@ -140,8 +140,8 @@ function check_cookie(&$pun_user)
 			{
 				$pun_user['logged'] = $now;
 
-				// With non-transactional DBMS REPLACE INTO avoids a user having two rows in the online table
-				$query = $db->replace(array('user_id' => ':user_id', 'ident' => ':ident', 'logged' => ':logged'), 'online', 'ident');
+				// REPLACE INTO avoids a user having two rows in the online table
+				$query = $db->replace(array('user_id' => ':user_id', 'logged' => ':logged'), 'online', array('ident' => ':ident'));
 				$params = array(':user_id' => $pun_user['id'], ':ident' => $pun_user['username'], ':logged' => $pun_user['logged']);
 
 				$query->run($params);
@@ -214,9 +214,9 @@ function authenticate_user($user, $password, $password_is_hash = false)
 	// Check if there's a user matching $user and $password
 	$query = $db->select(array('users' => 'u.*', 'group' => 'g.*', 'logged' => 'o.logged', 'idle' => 'o.idle'), 'users AS u');
 
-	$query->InnerJoin('g', 'groups AS g', 'g.g_id = u.group_id');
+	$query->innerJoin('g', 'groups AS g', 'g.g_id = u.group_id');
 
-	$query->LeftJoin('o', 'online AS o', 'o.user_id = u.id');
+	$query->leftJoin('o', 'online AS o', 'o.user_id = u.id');
 
 	$params = array();
 
@@ -298,16 +298,16 @@ function get_current_protocol()
 //
 function get_base_url($support_https = false)
 {
-	global $pun_config;
+	global $flux_config;
 	static $base_url;
 
 	if (!$support_https)
-		return $pun_config['o_base_url'];
+		return $flux_config['base_url'];
 
 	if (!isset($base_url))
 	{
 		// Make sure we are using the correct protocol
-		$base_url = str_replace(array('http://', 'https://'), get_current_protocol().'://', $pun_config['o_base_url']);
+		$base_url = str_replace(array('http://', 'https://'), get_current_protocol().'://', $flux_config['base_url']);
 	}
 
 	return $base_url;
@@ -326,9 +326,9 @@ function set_default_user()
 	// Fetch guest user
 	$query = $db->select(array('user' => 'u.*', 'group' => 'g.*', 'logged' => 'o.logged', 'last_post' => 'o.last_post', 'last_search' => 'o.last_search'), 'users AS u');
 
-	$query->InnerJoin('g', 'groups AS g', 'u.group_id = g.g_id');
+	$query->innerJoin('g', 'groups AS g', 'u.group_id = g.g_id');
 
-	$query->LeftJoin('o', 'online AS o', 'o.ident = :ident');
+	$query->leftJoin('o', 'online AS o', 'o.ident = :ident');
 
 	$query->where = 'u.id = 1';
 
@@ -348,8 +348,8 @@ function set_default_user()
 	{
 		$pun_user['logged'] = time();
 
-		// With non-transactional DBMS REPLACE INTO avoids a user having two rows in the online table
-		$query = $db->replace(array('user_id' => '1', 'ident' => ':ident', 'logged' => ':logged'), 'online', 'ident');
+		// REPLACE INTO avoids a user having two rows in the online table
+		$query = $db->replace(array('user_id' => '1', 'logged' => ':logged'), 'online', array('ident' => ':ident'));
 		$params = array(':ident' => $remote_addr, ':logged' => $pun_user['logged']);
 
 		$query->run($params);
@@ -954,7 +954,7 @@ function delete_post($post_id, $topic_id)
 	strip_search_index($post_id);
 
 	// Count number of replies in the topic
-	$query = $db->select(array('post_count' => 'COUNT(p.id)'), 'posts AS p');
+	$query = $db->select(array('post_count' => 'COUNT(p.id) AS post_count'), 'posts AS p');
 	$query->where = 'topic_id = :topic_id';
 
 	$params = array(':topic_id' => $topic_id);
@@ -1345,8 +1345,11 @@ function get_remote_address()
 			// X-Forwarded-For: client1, proxy1, proxy2
 			// where the value is a comma+space separated list of IP addresses, the left-most being the farthest downstream client,
 			// and each successive proxy that passed the request adding the IP address where it received the request from.
-			$remote_addr = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-			$remote_addr = trim($remote_addr[0]);
+			$forwarded_for = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+			$forwarded_for = trim($forwarded_for[0]);
+
+			if (@preg_match('%^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$%', $forwarded_for) || @preg_match('%^((([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){6}:[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){5}:([0-9A-Fa-f]{1,4}:)?[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){4}:([0-9A-Fa-f]{1,4}:){0,2}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){3}:([0-9A-Fa-f]{1,4}:){0,3}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){2}:([0-9A-Fa-f]{1,4}:){0,4}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){6}((\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b)\.){3}(\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b))|(([0-9A-Fa-f]{1,4}:){0,5}:((\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b)\.){3}(\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b))|(::([0-9A-Fa-f]{1,4}:){0,5}((\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b)\.){3}(\b((25[0-5])|(1\d{2})|(2[0-4]\d)|(\d{1,2}))\b))|([0-9A-Fa-f]{1,4}::([0-9A-Fa-f]{1,4}:){0,5}[0-9A-Fa-f]{1,4})|(::([0-9A-Fa-f]{1,4}:){0,6}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){1,7}:))$%', $forwarded_for))
+				$remote_addr = $forwarded_for;
 		}
 	}
 
@@ -2128,7 +2131,7 @@ function display_saved_queries()
 	global $db, $lang;
 
 	// Get the queries so that we can print them out
-	$saved_queries = $db->getDebugQueries();
+	$saved_queries = $db->getExecutedQueries();
 
 ?>
 

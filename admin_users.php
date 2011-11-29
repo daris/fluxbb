@@ -148,8 +148,14 @@ if (isset($_GET['show_users']))
 		message($lang->t('Bad IP message'));
 
 	// Fetch user count: TODO: Again, we really shouldn't fetch all the data just to count it...
-	$result = $db->query('SELECT DISTINCT poster_id, poster FROM '.$db->prefix.'posts WHERE poster_ip=\''.$db->escape($ip).'\'') or error('Unable to fetch post info', __FILE__, __LINE__, $db->error());
-	$num_users = $db->num_rows($result);
+	$query = $db->select(array('poster_id' => 'p.poster_id', 'poster' => 'p.poster'), 'posts AS p', true);
+	$query->where = 'poster_ip = :poster_ip';
+
+	$params = array(':poster_ip' => $ip);
+	$result = $query->run($params);
+
+	$num_users = count($result);
+	unset ($result, $query, $params);
 
 	// Determine the user offset (based on $_GET['p'])
 	$num_pages = ceil($num_users / 50);
@@ -205,20 +211,28 @@ if (isset($_GET['show_users']))
 
 	$result = $query->run($params);
 	$num_posts = count($result);
-	unset ($result, $query, $params);
+	unset ($query, $params);
 
 	if ($num_posts)
 	{
+		$query = $db->select(array('id' => 'u.id', 'username' => 'u.username', 'email' => 'u.email', 'title' => 'u.title', 'num_posts' => 'u.num_posts', 'admin_note' => 'u.admin_note', 'g_id' => 'g.g_id', 'g_user_title' => 'g.g_user_title'), 'users AS u');
+		$query->innerJoin('g', 'groups AS g', 'g.g_id = u.group_id');
+		$query->where = 'u.id > 1 AND u.id = :poster_id';
+
 		// Loop through users and print out some info
-		for ($i = 0; $i < $num_posts; ++$i)
+		foreach ($result as $cur_post)
 		{
-			list($poster_id, $poster) = $db->fetch_row($result);
+			$poster_id = $cur_post['poster_id'];
+			$poster = $cur_post['poster'];
 
 			// TODO: Do we really need a query within a query here...?
-			$result2 = $db->query('SELECT u.id, u.username, u.email, u.title, u.num_posts, u.admin_note, g.g_id, g.g_user_title FROM '.$db->prefix.'users AS u INNER JOIN '.$db->prefix.'groups AS g ON g.g_id=u.group_id WHERE u.id>1 AND u.id='.$poster_id) or error('Unable to fetch user info', __FILE__, __LINE__, $db->error());
+			$params = array(':poster_id' => $poster_id);
+			$result_user = $query->run($params);
 
-			if (($user_data = $db->fetch_assoc($result2)))
+			if (!empty($result_user))
 			{
+				$user_data = $result_user[0];
+
 				$user_title = get_title($user_data);
 
 				$actions = '<a href="admin_users.php?ip_stats='.$user_data['id'].'">'.$lang->t('Results view IP link').'</a> | <a href="search.php?action=show_user_posts&amp;user_id='.$user_data['id'].'">'.$lang->t('Results show posts link').'</a>';
@@ -251,9 +265,13 @@ if (isset($_GET['show_users']))
 
 			}
 		}
+
+		unset ($query, $params, $result_user);
 	}
 	else
 		echo "\t\t\t\t".'<tr><td class="tcl" colspan="6">'.$lang->t('Results no IP found').'</td></tr>'."\n";
+
+	unset ($result);
 
 ?>
 			</tbody>
@@ -585,22 +603,41 @@ else if (isset($_POST['delete_users']) || isset($_POST['delete_users_comply']))
 			@set_time_limit(0);
 
 			// Find all posts made by this user
-			$result = $db->query('SELECT p.id, p.topic_id, t.forum_id FROM '.$db->prefix.'posts AS p INNER JOIN '.$db->prefix.'topics AS t ON t.id=p.topic_id INNER JOIN '.$db->prefix.'forums AS f ON f.id=t.forum_id WHERE p.poster_id IN ('.implode(',', $user_ids).')') or error('Unable to fetch posts', __FILE__, __LINE__, $db->error());
-			if ($db->num_rows($result))
+			$query = $db->select(array('id' => 'p.id', 'topic_id' => 'p.topic_id', 'forum_id' => 't.forum_id'), 'posts AS p');
+			$query->innerJoin('t', 'topics AS t', 't.id = p.topic_id');
+			$query->innerJoin('f', 'forums AS f', 'f.id = t.forum_id');
+			$query->where = 'p.poster_id IN :uids';
+
+			$params = array(':uids' => $user_ids);
+			$result = $query->run($params);
+
+			unset ($query, $params);
+
+			if (!empty($result))
 			{
-				while ($cur_post = $db->fetch_assoc($result))
+				$query = $db->select(array('id' => 'p.id'), 'posts AS p');
+				$query->where = 'p.topic_id = :topic_id';
+				$query->order = array('posted' => 'p.posted');
+				$query->limit = '1';
+
+				foreach ($result as $cur_post)
 				{
 					// Determine whether this post is the "topic post" or not
-					$result2 = $db->query('SELECT id FROM '.$db->prefix.'posts WHERE topic_id='.$cur_post['topic_id'].' ORDER BY posted LIMIT 1') or error('Unable to fetch post info', __FILE__, __LINE__, $db->error());
+					$params = array(':topic_id' => $cur_post['topic_id']);
+					$result2 = $query->run($params);
 
-					if ($db->result($result2) == $cur_post['id'])
+					if (isset($result2[0]['id']) && $result2[0]['id'] == $cur_post['id'])
 						delete_topic($cur_post['topic_id']);
 					else
 						delete_post($cur_post['id'], $cur_post['topic_id']);
 
 					update_forum($cur_post['forum_id']);
 				}
+
+				unset ($query, $params, $result2);
 			}
+
+			unset ($result);
 		}
 		else
 		{
@@ -705,7 +742,7 @@ else if (isset($_POST['ban_users']) || isset($_POST['ban_users_comply']))
 
 	// Also, we cannot ban moderators
 	$query = $db->select(array('count' => 'COUNT(u.*) AS count'), 'users AS u');
-	$query->InnerJoin('g', 'groups AS g', 'u.group_id = g.g_id');
+	$query->innerJoin('g', 'groups AS g', 'u.group_id = g.g_id');
 	$query->where = 'g.g_moderator = 1 AND u.id IN :user_ids';
 
 	$params = array(':user_ids' => $user_ids);
@@ -738,7 +775,7 @@ else if (isset($_POST['ban_users']) || isset($_POST['ban_users_comply']))
 		else
 			$ban_expire = 'NULL';
 
-		$ban_message = ($ban_message != '') ? '\''.$db->escape($ban_message).'\'' : 'NULL';
+		$ban_message = ($ban_message != '') ? $db->quote($ban_message) : 'NULL';
 
 		// Fetch user information
 		$user_info = array();
@@ -929,7 +966,7 @@ else if (isset($_GET['find_user']))
 	{
 		if ($input != '' && in_array($key, array('username', 'email', 'title', 'realname', 'url', 'jabber', 'icq', 'msn', 'aim', 'yahoo', 'location', 'signature', 'admin_note')))
 		{
-			$conditions[] = 'u.'.$db->escape($key).' '.$like_command.' \''.$db->escape(str_replace('*', '%', $input)).'\'';
+			$conditions[] = 'u.'.$key.' '.$like_command.' '.$db->quote(str_replace('*', '%', $input));
 			$query_str[] = 'form%5B'.$key.'%5D='.urlencode($input);
 		}
 	}
@@ -949,8 +986,13 @@ else if (isset($_GET['find_user']))
 		$conditions[] = 'u.group_id='.$user_group;
 
 	// Fetch user count
-	$result = $db->query('SELECT COUNT(id) FROM '.$db->prefix.'users AS u LEFT JOIN '.$db->prefix.'groups AS g ON g.g_id=u.group_id WHERE u.id>1'.(!empty($conditions) ? ' AND '.implode(' AND ', $conditions) : '')) or error('Unable to fetch user info', __FILE__, __LINE__, $db->error());
-	$num_users = $db->result($result);
+	$query = $db->select(array('count' => 'COUNT(u.id) AS num_users'), 'users AS u ');
+	$query->leftJoin('g', 'groups AS g', 'g.g_id = u.group_id');
+	$query->where = 'u.id > 1'.(!empty($conditions) ? ' AND '.implode(' AND ', $conditions) : '');
+
+	$result = $query->run();
+
+	$num_users = $result[0]['num_users'];
 
 	// Determine the user offset (based on $_GET['p'])
 	$num_pages = ceil($num_users / 50);
@@ -1008,10 +1050,18 @@ else if (isset($_GET['find_user']))
 			<tbody>
 <?php
 
-	$result = $db->query('SELECT u.id, u.username, u.email, u.title, u.num_posts, u.admin_note, g.g_id, g.g_user_title FROM '.$db->prefix.'users AS u LEFT JOIN '.$db->prefix.'groups AS g ON g.g_id=u.group_id WHERE u.id>1'.(!empty($conditions) ? ' AND '.implode(' AND ', $conditions) : '').' ORDER BY '.$db->escape($order_by).' '.$db->escape($direction).' LIMIT '.$start_from.', 50') or error('Unable to fetch user info', __FILE__, __LINE__, $db->error());
-	if ($db->num_rows($result))
+	$query = $db->select(array('id' => 'u.id', 'username' => 'u.username', 'email' => 'u.email', 'title' => 'u.title', 'num_posts' => 'u.num_posts', 'admin_note' => 'u.admin_note', 'g_id' => 'g.g_id', 'g_user_title' => 'g.g_user_title'), 'users AS u');
+	$query->leftJoin('g', 'groups AS g', 'g.g_id = u.group_id');
+	$query->where = 'u.id > 1'.(!empty($conditions) ? ' AND '.implode(' AND ', $conditions) : '');
+	$query->order = array('order' => $order_by.' '.$direction);
+	$query->limit = '50';
+	$query->offset = $start_from;
+
+	$result = $query->run();
+
+	if (!empty($result))
 	{
-		while ($user_data = $db->fetch_assoc($result))
+		foreach ($result as $user_data)
 		{
 			$user_title = get_title($user_data);
 
@@ -1038,6 +1088,8 @@ else if (isset($_GET['find_user']))
 	}
 	else
 		echo "\t\t\t\t".'<tr><td class="tcl" colspan="6">'.$lang->t('No match').'</td></tr>'."\n";
+
+	unset ($result, $query);
 
 ?>
 			</tbody>

@@ -130,7 +130,6 @@ if (isset($_POST['form_sent']))
 
 	$result = $query->run($params);
 	if (!empty($result))
-	if ($db->num_rows($result))
 	{
 		if ($pun_config['p_allow_dupe_email'] == '0')
 			$errors[] = $lang->t('Dupe email');
@@ -144,7 +143,8 @@ if (isset($_POST['form_sent']))
 	// Make sure we got a valid language string
 	if (isset($_POST['language']))
 	{
-		if (!Flux_Lang::languageExists($_POST['language']))
+		$language = $_POST['language'];
+		if (!Flux_Lang::languageExists($language))
 			message($lang->t('Bad request'));
 	}
 	else

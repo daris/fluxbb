@@ -184,7 +184,7 @@ if (isset($_REQUEST['add_ban']) || isset($_GET['edit_ban']))
 									<th scope="row"><?php echo $lang->t('IP label') ?></th>
 									<td>
 										<input type="text" name="ban_ip" size="45" maxlength="255" value="<?php if (isset($ban_ip)) echo $ban_ip; ?>" tabindex="2" />
-										<span><?php echo $lang->t('IP help') ?><?php if ($ban_user != '' && isset($user_id)) printf(' '.$lang->t('IP help link'), '<a href="admin_users.php?ip_stats='.$user_id.'">'.$lang->t('here').'</a>') ?></span>
+										<span><?php echo $lang->t('IP help') ?><?php if ($ban_user != '' && isset($user_id)) echo ' '.$lang->t('IP help link', '<a href="admin_users.php?ip_stats='.$user_id.'">'.$lang->t('here').'</a>') ?></span>
 									</td>
 								</tr>
 								<tr>
@@ -254,7 +254,7 @@ else if (isset($_POST['add_edit_ban']))
 	{
 		$query = $db->select(array('group_id' => 'u.group_id', 'g_moderator' => 'g.g_moderator'), 'users AS u');
 
-		$query->InnerJoin('g', 'groups AS g', 'g.g_id = u.group_id');
+		$query->innerJoin('g', 'groups AS g', 'g.g_id = u.group_id');
 
 		$query->where = 'u.username = :ban_user AND u.id > 1';
 
@@ -447,14 +447,18 @@ else if (isset($_GET['find_ban']))
 	{
 		if ($input != '' && in_array($key, array('username', 'ip', 'email', 'message')))
 		{
-			$conditions[] = 'b.'.$db->escape($key).' '.$like_command.' \''.$db->escape(str_replace('*', '%', $input)).'\'';
+			$conditions[] = 'b.'.$key.' '.$like_command.' '.$db->quote(str_replace('*', '%', $input));
 			$query_str[] = 'form%5B'.$key.'%5D='.urlencode($input);
 		}
 	}
 
 	// Fetch ban count
-	$result = $db->query('SELECT COUNT(id) FROM '.$db->prefix.'bans as b WHERE b.id>0'.(!empty($conditions) ? ' AND '.implode(' AND ', $conditions) : '')) or error('Unable to fetch ban list', __FILE__, __LINE__, $db->error());
-	$num_bans = $db->result($result);
+	$query = $db->select(array('count' => 'COUNT(b.id) AS num_bans'), 'bans as b');
+	$query->where = 'b.id > 0'.(!empty($conditions) ? ' AND '.implode(' AND ', $conditions) : '');
+
+	$result = $query->run();
+
+	$num_bans = $result[0]['num_bans'];
 
 	// Determine the ban offset (based on $_GET['p'])
 	$num_pages = ceil($num_bans / 50);
@@ -504,10 +508,18 @@ else if (isset($_GET['find_ban']))
 			<tbody>
 <?php
 
-	$result = $db->query('SELECT b.id, b.username, b.ip, b.email, b.message, b.expire, b.ban_creator, u.username AS ban_creator_username FROM '.$db->prefix.'bans AS b LEFT JOIN '.$db->prefix.'users AS u ON b.ban_creator=u.id WHERE b.id>0'.(!empty($conditions) ? ' AND '.implode(' AND ', $conditions) : '').' ORDER BY '.$db->escape($order_by).' '.$db->escape($direction).' LIMIT '.$start_from.', 50') or error('Unable to fetch ban list', __FILE__, __LINE__, $db->error());
-	if ($db->num_rows($result))
+	$query = $db->select(array('id' => 'b.id', 'username' => 'b.username', 'email' => 'b.email', 'message' => 'b.message', 'expire' => 'b.expire', 'ban_creator' => 'b.ban_creator', 'ban_creator_username' => 'u.username AS ban_creator_username'), 'bans AS b');
+	$query->leftJoin('u', 'users AS u', 'b.ban_creator = u.id');
+	$query->where = 'b.id > 0'.(!empty($conditions) ? ' AND '.implode(' AND ', $conditions) : '');
+	$query->order = array('order' => $order_by.' '.$direction);
+	$query->limit = '50';
+	$query->offset = $start_from;
+
+	$result = $query->run();
+
+	if (!empty($result))
 	{
-		while ($ban_data = $db->fetch_assoc($result))
+		foreach ($result as $ban_data)
 		{
 
 			$actions = '<a href="admin_bans.php?edit_ban='.$ban_data['id'].'">'.$lang->t('Edit').'</a> | <a href="admin_bans.php?del_ban='.$ban_data['id'].'">'.$lang->t('Remove').'</a>';
@@ -529,6 +541,8 @@ else if (isset($_GET['find_ban']))
 	}
 	else
 		echo "\t\t\t\t".'<tr><td class="tcl" colspan="7">'.$lang->t('No match').'</td></tr>'."\n";
+
+	unset ($result, $query);
 
 ?>
 			</tbody>

@@ -21,11 +21,11 @@ if ($id < 1)
 // Fetch some info about the post, the topic and the forum
 $query = $db->select(array('fid' => 'f.id AS fid', 'forum_name' => 'f.forum_name', 'moderators' => 'f.moderators', 'redirect_url' => 'f.redirect_url', 'post_replies' => 'fp.post_replies', 'post_topics' => 'fp.post_topics', 'tid' => 't.id AS tid', 'subject' => 't.subject', 'first_post_id' => 't.first_post_id', 'closed' => 't.closed', 'posted' => 'p.posted', 'poster' => 'p.poster', 'poster_id' => 'p.poster_id', 'message' => 'p.message', 'hide_smilies' => 'p.hide_smilies'), 'posts AS p');
 
-$query->InnerJoin('t', 'topics AS t', 't.id = p.topic_id');
+$query->innerJoin('t', 'topics AS t', 't.id = p.topic_id');
 
-$query->InnerJoin('f', 'forums AS f', 'f.id = t.forum_id');
+$query->innerJoin('f', 'forums AS f', 'f.id = t.forum_id');
 
-$query->LeftJoin('fp', 'forum_perms AS fp', 'fp.forum_id = f.id AND fp.group_id = :group_id');
+$query->leftJoin('fp', 'forum_perms AS fp', 'fp.forum_id = f.id AND fp.group_id = :group_id');
 
 $query->where = '(fp.read_forum IS NULL OR fp.read_forum=1) AND p.id = :post_id';
 
@@ -122,7 +122,7 @@ $cur_post['message'] = parse_message($cur_post['message'], $cur_post['hide_smili
 		<form method="post" action="delete.php?id=<?php echo $id ?>">
 			<div class="inform">
 				<div class="forminfo">
-					<h3><span><?php printf($is_topic_post ? $lang->t('Topic by') : $lang->t('Reply by'), '<strong>'.pun_htmlspecialchars($cur_post['poster']).'</strong>', format_time($cur_post['posted'])) ?></span></h3>
+					<h3><span><?php echo $lang->t($is_topic_post ? 'Topic by' : 'Reply by', '<strong>'.pun_htmlspecialchars($cur_post['poster']).'</strong>', format_time($cur_post['posted'])) ?></span></h3>
 					<p><?php echo ($is_topic_post) ? '<strong>'.$lang->t('Topic warning').'</strong>' : '<strong>'.$lang->t('Warning').'</strong>' ?><br /><?php echo $lang->t('Delete info') ?></p>
 				</div>
 			</div>

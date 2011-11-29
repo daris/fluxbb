@@ -88,7 +88,7 @@ if ($action == 'change_pass')
 		{
 			$query = $db->select(array('group_id' => 'u.group_id', 'g_moderator' => 'g.g_moderator'), 'users AS u');
 
-			$query->InnerJoin('g', 'groups AS g', 'g.g_id = u.group_id');
+			$query->innerJoin('g', 'groups AS g', 'g.g_id = u.group_id');
 
 			$query->where = 'u.id = :user_id';
 
@@ -213,7 +213,7 @@ else if ($action == 'change_email')
 		{
 			$query = $db->select(array('group_id' => 'u.group_id', 'g_moderator' => 'g.g_moderator'), 'users AS u');
 
-			$query->InnerJoin('g', 'groups AS g', 'g.g_id = u.group_id');
+			$query->innerJoin('g', 'groups AS g', 'g.g_id = u.group_id');
 
 			$query->where = 'u.id = :user_id';
 
@@ -663,18 +663,30 @@ else if (isset($_POST['ban']))
 		message($lang->t('No permission'));
 
 	// Get the username of the user we are banning
-	$result = $db->query('SELECT username FROM '.$db->prefix.'users WHERE id='.$id) or error('Unable to fetch username', __FILE__, __LINE__, $db->error());
-	$username = $db->result($result);
+	$query = $db->select(array('username' => 'u.username'), 'users AS u');
+	$query->where = 'id = :id';
+	$params = array(':id' => $id);
+	$result = $query->run($params);
+	$username = $result[0]['username'];
+	unset($query, $params, $result);
 
 	// Check whether user is already banned
-	$result = $db->query('SELECT id FROM '.$db->prefix.'bans WHERE username = \''.$db->escape($username).'\' ORDER BY expire IS NULL DESC, expire DESC LIMIT 1') or error('Unable to fetch ban ID', __FILE__, __LINE__, $db->error());
-	if ($db->num_rows($result))
+	$query = $db->select(array('id' => 'b.id'), 'bans AS b');
+	$query->where = 'username = :username';
+	$query->order = array('expire1' => 'b.expire IS NULL DESC', 'expire2' => 'expire DESC');
+	$query->limit = 1;
+	$params = array(':username' => $username);
+	$result = $query->run($params);
+
+	if (count($result))
 	{
-		$ban_id = $db->result($result);
+		$ban_id = $result[0]['id'];
 		redirect('admin_bans.php?edit_ban='.$ban_id.'&amp;exists', $lang->t('Ban redirect'));
 	}
 	else
 		redirect('admin_bans.php?add_ban='.$id, $lang->t('Ban redirect'));
+
+	unset($query, $params, $result);
 }
 
 
@@ -776,9 +788,9 @@ else if (isset($_POST['delete_user']) || isset($_POST['delete_user_comply']))
 			// Find all posts made by this user
 			$query = $db->select(array('pid' => 'p.id', 'topic_id' => 'p.topic_id', 'forum_id' => 't.forum_id'), 'posts AS p');
 
-			$query->InnerJoin('t', 'topics AS t', 't.id = p.topic_id');
+			$query->innerJoin('t', 'topics AS t', 't.id = p.topic_id');
 
-			$query->InnerJoin('f', 'forums AS f', 'f.id = t.forum_id');
+			$query->innerJoin('f', 'forums AS f', 'f.id = t.forum_id');
 
 			$query->where = 'p.poster_id = :id';
 
@@ -881,7 +893,7 @@ else if (isset($_POST['form_sent']))
 	// Fetch the user group of the user we are editing
 	$query = $db->select(array('username' => 'u.username', 'group_id' => 'u.group_id', 'g_moderator' => 'g.g_moderator'), 'users AS u');
 
-	$query->InnerJoin('g', 'groups AS g', 'g.g_id = u.group_id');
+	$query->innerJoin('g', 'groups AS g', 'g.g_id = u.group_id');
 
 	$query->where = 'u.id = :id';
 
@@ -925,6 +937,7 @@ else if (isset($_POST['form_sent']))
 			// Make sure we got a valid language string
 			if (isset($_POST['form']['language']))
 			{
+				$form['language'] = pun_trim($_POST['form']['language']);
 				if (!Flux_Lang::languageExists($form['language']))
 					message($lang->t('Bad request'));
 			}
@@ -1261,7 +1274,7 @@ else if (isset($_POST['form_sent']))
 
 $query = $db->select(array('user' => 'u.*', 'group' => 'g.*'), 'users AS u');
 
-$query->LeftJoin('g', 'groups AS g', 'g.g_id = u.group_id');
+$query->leftJoin('g', 'groups AS g', 'g.g_id = u.group_id');
 
 $query->where = 'u.id = :user_id';
 
@@ -2056,7 +2069,7 @@ else
 
 				$query = $db->select(array('cid' => 'c.id AS cid', 'cat_name' => 'c.cat_name', 'fid' => 'f.id AS fid', 'forum_name' => 'f.forum_name', 'moderators' => 'f.moderators'), 'categories AS c');
 
-				$query->InnerJoin('f', 'forums AS f', 'c.id = f.cat_id');
+				$query->innerJoin('f', 'forums AS f', 'c.id = f.cat_id');
 
 				$query->where = 'f.redirect_url IS NULL';
 				$query->order = array('cposition' => 'c.disp_position DESC', 'cid' => 'c.id DESC', 'fposition' => 'f.disp_position');

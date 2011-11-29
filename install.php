@@ -7,7 +7,7 @@
  */
 
 // The FluxBB version this script installs
-define('FORUM_VERSION', '1.4.6');
+define('FORUM_VERSION', '1.4.7');
 
 define('FORUM_DB_REVISION', 15);
 define('FORUM_SI_REVISION', 2);
@@ -63,14 +63,6 @@ if (get_magic_quotes_gpc())
 @set_time_limit(0);
 
 
-// If we've been passed a default language, use it
-$install_lang = isset($_REQUEST['install_lang']) ? trim($_REQUEST['install_lang']) : 'English';
-$lang->setLanguage($install_lang);
-
-// Load the install.php language file
-$lang->load('install');
-
-
 if (file_exists(PUN_ROOT.'config.php'))
 {
 	// Check to see whether FluxBB is already installed
@@ -79,14 +71,7 @@ if (file_exists(PUN_ROOT.'config.php'))
 	// If we have the 1.3-legacy constant defined, define the proper 1.4 constant so we don't get an incorrect "need to install" message
 	if (defined('FORUM'))
 		define('PUN', FORUM);
-
-	// If PUN is defined, config.php is probably valid and thus the software is installed
-	if (defined('PUN'))
-		exit($lang->t('Already installed'));
 }
-
-// Define PUN because email.php requires it
-define('PUN', 1);
 
 // If the cache directory is not specified, we use the default setting
 if (!defined('FORUM_CACHE_DIR'))
@@ -95,10 +80,32 @@ if (!defined('FORUM_CACHE_DIR'))
 // Load the cache module
 require PUN_ROOT.'modules/cache/cache.php';
 $cache = Cache::load('file', array('dir' => FORUM_CACHE_DIR), 'varexport'); // TODO: Move this config into config.php
+// TODO: according to the comment above - how do you want to move this to config when it doesn't exist? :)
+
+// Load the language system
+require PUN_ROOT.'include/classes/lang.php';
+$lang = new Flux_Lang();
+
+// If we've been passed a default language, use it
+$install_lang = isset($_REQUEST['install_lang']) ? trim($_REQUEST['install_lang']) : 'English';
+$lang->setLanguage($install_lang);
+
+// Load the install.php language file
+$lang->load('install');
+
+// If PUN is defined, config.php is probably valid and thus the software is installed
+if (defined('PUN'))
+	exit($lang->t('Already installed'));
+
+// Define PUN because email.php requires it
+define('PUN', 1);
 
 // Make sure we are running at least MIN_PHP_VERSION
 if (!function_exists('version_compare') || version_compare(PHP_VERSION, MIN_PHP_VERSION, '<'))
 	exit($lang->t('You are running error', 'PHP', PHP_VERSION, FORUM_VERSION, MIN_PHP_VERSION));
+
+// Load the DB module
+require PUN_ROOT.'modules/database/src/Database/Adapter.php';
 
 
 //
@@ -106,9 +113,9 @@ if (!function_exists('version_compare') || version_compare(PHP_VERSION, MIN_PHP_
 //
 function generate_config_file()
 {
-	global $db_type, $db_host, $db_name, $db_username, $db_password, $db_prefix, $cookie_name, $cookie_seed;
+	global $db_type, $db_host, $db_name, $db_username, $db_password, $db_prefix, $cookie_name, $cookie_seed, $base_url;
 
-	return '<?php'."\n\n".'$db_type = \''.$db_type."';\n".'$db_host = \''.$db_host."';\n".'$db_name = \''.addslashes($db_name)."';\n".'$db_username = \''.addslashes($db_username)."';\n".'$db_password = \''.addslashes($db_password)."';\n".'$db_prefix = \''.addslashes($db_prefix)."';\n".'$p_connect = false;'."\n\n".'$cookie_name = '."'".$cookie_name."';\n".'$cookie_domain = '."'';\n".'$cookie_path = '."'/';\n".'$cookie_secure = 0;'."\n".'$cookie_seed = \''.random_key(16, false, true)."';\n\ndefine('PUN', 1);\n";
+	return '<?php'."\n\n".'$flux_config = array();'."\n\n".'$flux_config[\'db\'][\'type\'] = \''.$db_type."';\n".'$flux_config[\'db\'][\'host\'] = \''.$db_host."';\n".'$flux_config[\'db\'][\'dbname\'] = \''.addslashes($db_name)."';\n".'$flux_config[\'db\'][\'username\'] = \''.addslashes($db_username)."';\n".'$flux_config[\'db\'][\'password\'] = \''.addslashes($db_password)."';\n".'$flux_config[\'db\'][\'prefix\'] = \''.addslashes($db_prefix)."';\n\n".'$flux_config[\'cache\'][\'type\'] = '."'file';\n".'$flux_config[\'cache\'][\'dir\'] = PUN_ROOT.\'cache/\';'."\n\n".'$flux_config[\'cookie\'][\'name\'] = '."'".$cookie_name."';\n".'$flux_config[\'cookie\'][\'domain\'] = '."'';\n".'$flux_config[\'cookie\'][\'path\'] = '."'/';\n".'$flux_config[\'cookie\'][\'secure\'] = 0;'."\n".'$flux_config[\'cookie\'][\'seed\'] = \''.random_key(16, false, true).'\';'."\n\n".'$flux_config[\'base_url\'] = \''.$base_url.'\';'."\n\n".'define(\'PUN\', 1);'."\n";
 }
 
 
@@ -125,6 +132,7 @@ if (isset($_POST['generate_config']))
 	$db_prefix = $_POST['db_prefix'];
 	$cookie_name = $_POST['cookie_name'];
 	$cookie_seed = $_POST['cookie_seed'];
+	$base_url = $_POST['base_url'];
 
 	echo generate_config_file();
 	exit;
@@ -218,28 +226,7 @@ if (!@is_writable(PUN_ROOT.'img/avatars/'))
 if (!isset($_POST['form_sent']) || !empty($alerts))
 {
 	// Determine available database extensions
-	$dual_mysql = false;
-	$db_extensions = array();
-	$mysql_innodb = false;
-	if (function_exists('mysqli_connect'))
-	{
-		$db_extensions[] = array('mysqli', 'MySQL Improved');
-		$db_extensions[] = array('mysqli_innodb', 'MySQL Improved (InnoDB)');
-		$mysql_innodb = true;
-	}
-	if (function_exists('mysql_connect'))
-	{
-		$db_extensions[] = array('mysql', 'MySQL Standard');
-		$db_extensions[] = array('mysql_innodb', 'MySQL Standard (InnoDB)');
-		$mysql_innodb = true;
-
-		if (count($db_extensions) > 2)
-			$dual_mysql = true;
-	}
-	if (function_exists('sqlite_open'))
-		$db_extensions[] = array('sqlite', 'SQLite');
-	if (function_exists('pg_connect'))
-		$db_extensions[] = array('pgsql', 'PostgreSQL');
+	$db_extensions = Flux_Database_Adapter::getDriverList();
 
 	if (empty($db_extensions))
 		error($lang->t('No DB extensions'));
@@ -366,18 +353,18 @@ foreach ($alerts as $cur_alert)
 				<legend><?php echo $lang->t('Select database') ?></legend>
 					<div class="infldset">
 						<p><?php echo $lang->t('Info 2') ?></p>
-<?php if ($dual_mysql): ?>						<p><?php echo $lang->t('Dual MySQL') ?></p>
+<?php /*if ($dual_mysql): ?>						<p><?php echo $lang->t('Dual MySQL') ?></p>
 <?php endif; ?><?php if ($mysql_innodb): ?>						<p><?php echo $lang->t('InnoDB') ?></p>
-<?php endif; ?>						<label class="required"><strong><?php echo $lang->t('Database type') ?> <span><?php echo $lang->t('Required') ?></span></strong>
+<?php endif;*/ ?>						<label class="required"><strong><?php echo $lang->t('Database type') ?> <span><?php echo $lang->t('Required') ?></span></strong>
 						<br /><select name="req_db_type">
 <?php
 
-	foreach ($db_extensions as $temp)
+	foreach ($db_extensions as $cur_extension)
 	{
-		if ($temp[0] == $db_type)
-			echo "\t\t\t\t\t\t\t".'<option value="'.$temp[0].'" selected="selected">'.$temp[1].'</option>'."\n";
+		if ($cur_extension == $db_type)
+			echo "\t\t\t\t\t\t\t".'<option value="'.$cur_extension.'" selected="selected">'.$cur_extension.'</option>'."\n";
 		else
-			echo "\t\t\t\t\t\t\t".'<option value="'.$temp[0].'">'.$temp[1].'</option>'."\n";
+			echo "\t\t\t\t\t\t\t".'<option value="'.$cur_extension.'">'.$cur_extension.'</option>'."\n";
 	}
 
 ?>
@@ -549,39 +536,12 @@ foreach ($alerts as $cur_alert)
 }
 else
 {
-	// Load the appropriate DB layer class
-	switch ($db_type)
-	{
-		case 'mysql':
-			require PUN_ROOT.'include/dblayer/mysql.php';
-			break;
-
-		case 'mysql_innodb':
-			require PUN_ROOT.'include/dblayer/mysql_innodb.php';
-			break;
-
-		case 'mysqli':
-			require PUN_ROOT.'include/dblayer/mysqli.php';
-			break;
-
-		case 'mysqli_innodb':
-			require PUN_ROOT.'include/dblayer/mysqli_innodb.php';
-			break;
-
-		case 'pgsql':
-			require PUN_ROOT.'include/dblayer/pgsql.php';
-			break;
-
-		case 'sqlite':
-			require PUN_ROOT.'include/dblayer/sqlite.php';
-			break;
-
-		default:
-			error($lang->t('DB type not valid', pun_htmlspecialchars($db_type)));
-	}
+	if (!Flux_Database_Adapter::driverExists($db_type))
+		error($lang->t('DB type not valid', pun_htmlspecialchars($db_type)));
 
 	// Create the database object (and connect/select db)
-	$db = new DBLayer($db_host, $db_username, $db_password, $db_name, $db_prefix, false);
+	$options = array('host' => $db_host, 'dbname' => $db_name, 'username' => $db_username, 'password' => $db_password, 'prefix' => $db_prefix);
+	$db = Flux_Database_Adapter::factory($db_type, $options);
 
 	// Validate prefix
 	if (strlen($db_prefix) > 0 && (!preg_match('%^[a-zA-Z_][a-zA-Z0-9_]*$%', $db_prefix) || strlen($db_prefix) > 40))
@@ -590,995 +550,368 @@ else
 	// Do some DB type specific checks
 	switch ($db_type)
 	{
-		case 'mysql':
-		case 'mysqli':
-		case 'mysql_innodb':
-		case 'mysqli_innodb':
-			$mysql_info = $db->getVersion();
-			if (version_compare($mysql_info['version'], MIN_MYSQL_VERSION, '<'))
-				error($lang->t('You are running error', 'MySQL', $mysql_info['version'], FORUM_VERSION, MIN_MYSQL_VERSION));
-			break;
+		// TODO: fix the version checks
+//		case 'mysql':
+//		case 'mysqli':
+//		case 'mysql_innodb':
+//		case 'mysqli_innodb':
+//			$mysql_info = $db->getVersion();
+//			if (version_compare($mysql_info['version'], MIN_MYSQL_VERSION, '<'))
+//				error($lang->t('You are running error', 'MySQL', $mysql_info['version'], FORUM_VERSION, MIN_MYSQL_VERSION));
+//			break;
 
-		case 'pgsql':
-			$pgsql_info = $db->getVersion();
-			if (version_compare($pgsql_info['version'], MIN_PGSQL_VERSION, '<'))
-				error($lang->t('You are running error', 'PostgreSQL', $pgsql_info['version'], FORUM_VERSION, MIN_PGSQL_VERSION));
-			break;
+//		case 'pgsql':
+//			$pgsql_info = $db->getVersion();
+//			if (version_compare($pgsql_info['version'], MIN_PGSQL_VERSION, '<'))
+//				error($lang->t('You are running error', 'PostgreSQL', $pgsql_info['version'], FORUM_VERSION, MIN_PGSQL_VERSION));
+//			break;
 
-		case 'sqlite':
+		case 'SQLite':
 			if (strtolower($db_prefix) == 'sqlite_')
 				error($lang->t('Prefix reserved'));
 			break;
 	}
 
-
-	// Make sure FluxBB isn't already installed
-	$result = $db->query('SELECT 1 FROM '.$db_prefix.'users WHERE id=1');
-	if ($db->num_rows($result))
-		error($lang->t('Existing table error', $db_prefix, $db_name));
-
-	// Check if InnoDB is available
-	if ($db_type == 'mysql_innodb' || $db_type == 'mysqli_innodb')
+	if ($db->tableExists('users')->run())
 	{
-		$result = $db->query('SHOW VARIABLES LIKE \'have_innodb\'');
-		list (, $result) = $db->fetch_row($result);
-		if ((strtoupper($result) != 'YES'))
-			error($lang->t('InnoDB off'));
-	}
+		// Make sure FluxBB isn't already installed
+		$query = $db->select(array('1' => '1'), 'users AS u');
+		$query->where = 'id = :id';
+		$params = array(':id' => 1);
+		$result = $query->run($params);
 
+		if (!empty($result))
+			error($lang->t('Existing table error', $db->prefix.'users', $db_name));
+
+		unset($query, $params, $result);
+	}
 
 	// Start a transaction
 	$db->startTransaction();
 
-
 	// Create all tables
-	$schema = array(
-		'FIELDS'		=> array(
-			'id'			=> array(
-				'datatype'		=> 'SERIAL',
-				'allow_null'	=> false
-			),
-			'username'		=> array(
-				'datatype'		=> 'VARCHAR(200)',
-				'allow_null'	=> true
-			),
-			'ip'			=> array(
-				'datatype'		=> 'VARCHAR(255)',
-				'allow_null'	=> true
-			),
-			'email'			=> array(
-				'datatype'		=> 'VARCHAR(80)',
-				'allow_null'	=> true
-			),
-			'message'		=> array(
-				'datatype'		=> 'VARCHAR(255)',
-				'allow_null'	=> true
-			),
-			'expire'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> true
-			),
-			'ban_creator'	=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			)
-		),
-		'PRIMARY KEY'	=> array('id'),
-		'INDEXES'		=> array(
-			'username_idx'	=> array('username')
-		)
-	);
+	$query = $db->createTable('bans');
+	$query->field('id', Flux_Database_Query_Helper_TableColumn::TYPE_SERIAL);
+	$query->field('username', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(200));
+	$query->field('ip', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(255));
+	$query->field('email', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(80));
+	$query->field('message', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(255));
+	$query->field('expire', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED);
+	$query->field('ban_creator', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
 
-	if ($db_type == 'mysql' || $db_type == 'mysqli' || $db_type == 'mysql_innodb' || $db_type == 'mysqli_innodb')
-		$schema['INDEXES']['username_idx'] = array('username(25)');
+	$query->index('username_idx', array('username' => 'username(25)'));
+	$query->index('PRIMARY', array('id'));
+	$query->run();
 
-	$db->create_table('bans', $schema) or error('Unable to create bans table', __FILE__, __LINE__, $db->error());
+	unset ($query);
 
+	$query = $db->createTable('categories');
+	$query->field('id', Flux_Database_Query_Helper_TableColumn::TYPE_SERIAL);
+	$query->field('cat_name', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(80), 'New Category', false);
+	$query->field('disp_position', Flux_Database_Query_Helper_TableColumn::TYPE_INT, 0, false);
+	$query->index('PRIMARY', array('id'));
+	$query->run();
 
-	$schema = array(
-		'FIELDS'		=> array(
-			'id'			=> array(
-				'datatype'		=> 'SERIAL',
-				'allow_null'	=> false
-			),
-			'cat_name'		=> array(
-				'datatype'		=> 'VARCHAR(80)',
-				'allow_null'	=> false,
-				'default'		=> '\'New Category\''
-			),
-			'disp_position'	=> array(
-				'datatype'		=> 'INT(10)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			)
-		),
-		'PRIMARY KEY'	=> array('id')
-	);
+	unset ($query);
 
-	$db->create_table('categories', $schema) or error('Unable to create categories table', __FILE__, __LINE__, $db->error());
+	$query = $db->createTable('censoring');
+	$query->field('id', Flux_Database_Query_Helper_TableColumn::TYPE_SERIAL);
+	$query->field('search_for', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(60), '', false);
+	$query->field('replace_with', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(60), '', false);
+	$query->index('PRIMARY', array('id'));
+	$query->run();
 
+	unset ($query);
 
-	$schema = array(
-		'FIELDS'		=> array(
-			'id'			=> array(
-				'datatype'		=> 'SERIAL',
-				'allow_null'	=> false
-			),
-			'search_for'	=> array(
-				'datatype'		=> 'VARCHAR(60)',
-				'allow_null'	=> false,
-				'default'		=> '\'\''
-			),
-			'replace_with'	=> array(
-				'datatype'		=> 'VARCHAR(60)',
-				'allow_null'	=> false,
-				'default'		=> '\'\''
-			)
-		),
-		'PRIMARY KEY'	=> array('id')
-	);
+	$query = $db->createTable('config');
+	$query->field('conf_name', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(255), '', true);
+	$query->field('conf_value', Flux_Database_Query_Helper_TableColumn::TYPE_TEXT);
 
-	$db->create_table('censoring', $schema) or error('Unable to create censoring table', __FILE__, __LINE__, $db->error());
+	$query->index('PRIMARY', array('conf_name'));
+	$query->run();
 
+	unset ($query);
 
-	$schema = array(
-		'FIELDS'		=> array(
-			'conf_name'		=> array(
-				'datatype'		=> 'VARCHAR(255)',
-				'allow_null'	=> false,
-				'default'		=> '\'\''
-			),
-			'conf_value'	=> array(
-				'datatype'		=> 'TEXT',
-				'allow_null'	=> true
-			)
-		),
-		'PRIMARY KEY'	=> array('conf_name')
-	);
+	$query = $db->createTable('forum_perms');
+	$query->field('group_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT, 0, true);
+	$query->field('forum_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT, 0, false);
+	$query->field('read_forum', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('post_replies', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('post_topics', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
 
-	$db->create_table('config', $schema) or error('Unable to create config table', __FILE__, __LINE__, $db->error());
+	$query->index('PRIMARY', array('group_id', 'forum_id'));
+	$query->run();
 
+	unset ($query);
 
-	$schema = array(
-		'FIELDS'		=> array(
-			'group_id'		=> array(
-				'datatype'		=> 'INT(10)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'forum_id'		=> array(
-				'datatype'		=> 'INT(10)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'read_forum'	=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'post_replies'	=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'post_topics'	=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			)
-		),
-		'PRIMARY KEY'	=> array('group_id', 'forum_id')
-	);
+	$query = $db->createTable('forums');
+	$query->field('id', Flux_Database_Query_Helper_TableColumn::TYPE_SERIAL);
+	$query->field('forum_name', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(80), 'New forum', false);
+	$query->field('forum_desc', Flux_Database_Query_Helper_TableColumn::TYPE_TEXT);
+	$query->field('redirect_url', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(100));
+	$query->field('moderators', Flux_Database_Query_Helper_TableColumn::TYPE_TEXT);
+	$query->field('num_topics', Flux_Database_Query_Helper_TableColumn::TYPE_MEDIUMINT_UNSIGNED, 0, false);
+	$query->field('num_posts', Flux_Database_Query_Helper_TableColumn::TYPE_MEDIUMINT_UNSIGNED, 0, false);
+	$query->field('last_post', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED);
+	$query->field('last_post_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED);
+	$query->field('last_poster', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(200));
+	$query->field('sort_by', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->field('disp_position', Flux_Database_Query_Helper_TableColumn::TYPE_INT, 0, false);
+	$query->field('cat_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->index('PRIMARY', array('id'));
+	$query->run();
 
-	$db->create_table('forum_perms', $schema) or error('Unable to create forum_perms table', __FILE__, __LINE__, $db->error());
+	unset ($query);
 
+	$query = $db->createTable('groups');
+	$query->field('g_id', Flux_Database_Query_Helper_TableColumn::TYPE_SERIAL);
+	$query->field('g_title', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(50), '', false);
+	$query->field('g_user_title', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(50));
+	$query->field('g_moderator', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->field('g_mod_edit_users', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->field('g_mod_rename_users', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->field('g_mod_change_passwords', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->field('g_mod_ban_users', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->field('g_read_board', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('g_view_users', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('g_post_replies', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('g_post_topics', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('g_edit_posts', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('g_delete_posts', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('g_delete_topics', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('g_set_title', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('g_search', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('g_search_users', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('g_send_email', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('g_post_flood', Flux_Database_Query_Helper_TableColumn::TYPE_SMALLINT, 30, false);
+	$query->field('g_search_flood', Flux_Database_Query_Helper_TableColumn::TYPE_SMALLINT, 30, false);
+	$query->field('g_email_flood', Flux_Database_Query_Helper_TableColumn::TYPE_SMALLINT, 60, false);
+	$query->field('g_report_flood', Flux_Database_Query_Helper_TableColumn::TYPE_SMALLINT, 60, false);
+	$query->index('PRIMARY', array('g_id'));
+	$query->run();
 
-	$schema = array(
-		'FIELDS'		=> array(
-			'id'			=> array(
-				'datatype'		=> 'SERIAL',
-				'allow_null'	=> false
-			),
-			'forum_name'	=> array(
-				'datatype'		=> 'VARCHAR(80)',
-				'allow_null'	=> false,
-				'default'		=> '\'New forum\''
-			),
-			'forum_desc'	=> array(
-				'datatype'		=> 'TEXT',
-				'allow_null'	=> true
-			),
-			'redirect_url'	=> array(
-				'datatype'		=> 'VARCHAR(100)',
-				'allow_null'	=> true
-			),
-			'moderators'	=> array(
-				'datatype'		=> 'TEXT',
-				'allow_null'	=> true
-			),
-			'num_topics'	=> array(
-				'datatype'		=> 'MEDIUMINT(8) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'num_posts'		=> array(
-				'datatype'		=> 'MEDIUMINT(8) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'last_post'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> true
-			),
-			'last_post_id'	=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> true
-			),
-			'last_poster'	=> array(
-				'datatype'		=> 'VARCHAR(200)',
-				'allow_null'	=> true
-			),
-			'sort_by'		=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'disp_position'	=> array(
-				'datatype'		=> 'INT(10)',
-				'allow_null'	=> false,
-				'default'		=>	'0'
-			),
-			'cat_id'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=>	'0'
-			)
-		),
-		'PRIMARY KEY'	=> array('id')
-	);
+	unset ($query);
 
-	$db->create_table('forums', $schema) or error('Unable to create forums table', __FILE__, __LINE__, $db->error());
+	$query = $db->createTable('online');
+	$query->field('user_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 1, false);
+	$query->field('ident', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(200), '', false);
+	$query->field('logged', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('idle', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->field('last_post', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED);
+	$query->field('last_search', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED);
 
+	$query->index('user_id_ident_idx', array('user_id', 'ident' => 'ident(25)'), true);
+	$query->index('ident_idx', array('ident' => 'ident(25)'));
+	$query->index('logged_idx', array('logged'));
+	$query->run();
 
-	$schema = array(
-		'FIELDS'		=> array(
-			'g_id'						=> array(
-				'datatype'		=> 'SERIAL',
-				'allow_null'	=> false
-			),
-			'g_title'					=> array(
-				'datatype'		=> 'VARCHAR(50)',
-				'allow_null'	=> false,
-				'default'		=> '\'\''
-			),
-			'g_user_title'				=> array(
-				'datatype'		=> 'VARCHAR(50)',
-				'allow_null'	=> true
-			),
-			'g_moderator'				=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'g_mod_edit_users'			=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'g_mod_rename_users'		=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'g_mod_change_passwords'	=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'g_mod_ban_users'			=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'g_read_board'				=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'g_view_users'				=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'g_post_replies'			=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'g_post_topics'				=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'g_edit_posts'				=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'g_delete_posts'			=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'g_delete_topics'			=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'g_set_title'				=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'g_search'					=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'g_search_users'			=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'g_send_email'				=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'g_post_flood'				=> array(
-				'datatype'		=> 'SMALLINT(6)',
-				'allow_null'	=> false,
-				'default'		=> '30'
-			),
-			'g_search_flood'			=> array(
-				'datatype'		=> 'SMALLINT(6)',
-				'allow_null'	=> false,
-				'default'		=> '30'
-			),
-			'g_email_flood'				=> array(
-				'datatype'		=> 'SMALLINT(6)',
-				'allow_null'	=> false,
-				'default'		=> '60'
-			),
-			'g_report_flood'			=> array(
-				'datatype'		=> 'SMALLINT(6)',
-				'allow_null'	=> false,
-				'default'		=> '60'
-			)
-		),
-		'PRIMARY KEY'	=> array('g_id')
-	);
+	unset ($query);
 
-	$db->create_table('groups', $schema) or error('Unable to create groups table', __FILE__, __LINE__, $db->error());
+	$query = $db->createTable('posts');
+	$query->field('id', Flux_Database_Query_Helper_TableColumn::TYPE_SERIAL);
+	$query->field('poster', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(200), '', false);
+	$query->field('poster_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 1, false);
+	$query->field('poster_ip', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(39));
+	$query->field('poster_email', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(80));
+	$query->field('message', Flux_Database_Query_Helper_TableColumn::TYPE_MEDIUMTEXT);
+	$query->field('hide_smilies', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->field('posted', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('edited', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED);
+	$query->field('edited_by', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(200));
+	$query->field('topic_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
 
+	$query->index('topic_id_idx', array('topic_id'));
+	$query->index('multi_idx', array('poster_id', 'topic_id'));
+	$query->index('PRIMARY', array('id'));
+	$query->run();
 
-	$schema = array(
-		'FIELDS'		=> array(
-			'user_id'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'ident'			=> array(
-				'datatype'		=> 'VARCHAR(200)',
-				'allow_null'	=> false,
-				'default'		=> '\'\''
-			),
-			'logged'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'idle'			=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'last_post'			=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> true
-			),
-			'last_search'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> true
-			),
-		),
-		'UNIQUE KEYS'	=> array(
-			'user_id_ident_idx'	=> array('user_id', 'ident')
-		),
-		'INDEXES'		=> array(
-			'ident_idx'		=> array('ident'),
-			'logged_idx'	=> array('logged')
-		)
-	);
+	unset ($query);
 
-	if ($db_type == 'mysql' || $db_type == 'mysqli' || $db_type == 'mysql_innodb' || $db_type == 'mysqli_innodb')
+	$query = $db->createTable('ranks');
+	$query->field('id', Flux_Database_Query_Helper_TableColumn::TYPE_SERIAL);
+	$query->field('rank', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(50), '', false);
+	$query->field('min_posts', Flux_Database_Query_Helper_TableColumn::TYPE_MEDIUMINT_UNSIGNED, 0, false);
+	$query->index('PRIMARY', array('id'));
+	$query->run();
+
+	unset ($query);
+
+	$query = $db->createTable('reports');
+	$query->field('id', Flux_Database_Query_Helper_TableColumn::TYPE_SERIAL);
+	$query->field('post_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('topic_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('forum_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('reported_by', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('created', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('message', Flux_Database_Query_Helper_TableColumn::TYPE_TEXT);
+	$query->field('zapped', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED);
+	$query->field('zapped_by', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED);
+
+	$query->index('zapped_idx', array('zapped'));
+	$query->index('PRIMARY', array('id'));
+	$query->run();
+
+	unset ($query);
+
+	$query = $db->createTable('search_cache');
+	$query->field('id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('ident', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(200), '', false);
+	$query->field('search_data', Flux_Database_Query_Helper_TableColumn::TYPE_MEDIUMTEXT);
+	$query->index('ident_idx', array('ident' => 'ident(8)'));
+	$query->index('PRIMARY', array('id'));
+	$query->run();
+
+	unset ($query);
+
+	$query = $db->createTable('search_matches');
+	$query->field('post_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('word_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('subject_match', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->index('word_id_idx', array('word_id'));
+	$query->index('post_id_idx', array('post_id'));
+	$query->run();
+
+	unset ($query);
+
+	$query = $db->createTable('search_words');
+	$query->field('id', Flux_Database_Query_Helper_TableColumn::TYPE_SERIAL);
+	$query->field('word', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(20), '', true, 'bin');
+	$query->index('id_idx', array('id'));
+	$query->index('PRIMARY', array('word'));
+
+	if ($db_type == 'SQLite')
 	{
-		$schema['UNIQUE KEYS']['user_id_ident_idx'] = array('user_id', 'ident(25)');
-		$schema['INDEXES']['ident_idx'] = array('ident(25)');
+		$query->primary = array('id');
+		$query->index('word_idx', array('word'));
 	}
 
-	if ($db_type == 'mysql_innodb' || $db_type == 'mysqli_innodb')
-		$schema['ENGINE'] = 'InnoDB';
+	$query->run();
 
-	$db->create_table('online', $schema) or error('Unable to create online table', __FILE__, __LINE__, $db->error());
+	unset ($query);
 
+	$query = $db->createTable('topic_subscriptions');
+	$query->field('user_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('topic_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
 
-	$schema = array(
-		'FIELDS'		=> array(
-			'id'			=> array(
-				'datatype'		=> 'SERIAL',
-				'allow_null'	=> false
-			),
-			'poster'		=> array(
-				'datatype'		=> 'VARCHAR(200)',
-				'allow_null'	=> false,
-				'default'		=> '\'\''
-			),
-			'poster_id'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'poster_ip'		=> array(
-				'datatype'		=> 'VARCHAR(39)',
-				'allow_null'	=> true
-			),
-			'poster_email'	=> array(
-				'datatype'		=> 'VARCHAR(80)',
-				'allow_null'	=> true
-			),
-			'message'		=> array(
-				'datatype'		=> 'MEDIUMTEXT',
-				'allow_null'	=> true
-			),
-			'hide_smilies'	=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'posted'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'edited'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> true
-			),
-			'edited_by'		=> array(
-				'datatype'		=> 'VARCHAR(200)',
-				'allow_null'	=> true
-			),
-			'topic_id'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			)
-		),
-		'PRIMARY KEY'	=> array('id'),
-		'INDEXES'		=> array(
-			'topic_id_idx'	=> array('topic_id'),
-			'multi_idx'		=> array('poster_id', 'topic_id')
-		)
-	);
+	$query->index('PRIMARY', array('user_id', 'topic_id'));
+	$query->run();
 
-	$db->create_table('posts', $schema) or error('Unable to create posts table', __FILE__, __LINE__, $db->error());
+	unset ($query);
 
+	$query = $db->createTable('forum_subscriptions');
+	$query->field('user_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0);
+	$query->field('forum_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0);
 
-	$schema = array(
-		'FIELDS'		=> array(
-			'id'			=> array(
-				'datatype'		=> 'SERIAL',
-				'allow_null'	=> false
-			),
-			'rank'			=> array(
-				'datatype'		=> 'VARCHAR(50)',
-				'allow_null'	=> false,
-				'default'		=> '\'\''
-			),
-			'min_posts'		=> array(
-				'datatype'		=> 'MEDIUMINT(8) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			)
-		),
-		'PRIMARY KEY'	=> array('id')
-	);
+	$query->index('PRIMARY', array('user_id', 'forum_id'));
+	$query->run();
 
-	$db->create_table('ranks', $schema) or error('Unable to create ranks table', __FILE__, __LINE__, $db->error());
+	unset ($query);
 
+	$query = $db->createTable('topics');
+	$query->field('id', Flux_Database_Query_Helper_TableColumn::TYPE_SERIAL);
+	$query->field('poster', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(200), '', false);
+	$query->field('subject', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(255), '', false);
+	$query->field('posted', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('first_post_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('last_post', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('last_post_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('last_poster', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(200));
+	$query->field('num_views', Flux_Database_Query_Helper_TableColumn::TYPE_MEDIUMINT_UNSIGNED, 0, false);
+	$query->field('num_replies', Flux_Database_Query_Helper_TableColumn::TYPE_MEDIUMINT_UNSIGNED, 0, false);
+	$query->field('closed', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->field('sticky', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->field('moved_to', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED);
+	$query->field('forum_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
 
-	$schema = array(
-		'FIELDS'		=> array(
-			'id'			=> array(
-				'datatype'		=> 'SERIAL',
-				'allow_null'	=> false
-			),
-			'post_id'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'topic_id'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'forum_id'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'reported_by'	=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'created'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'message'		=> array(
-				'datatype'		=> 'TEXT',
-				'allow_null'	=> true
-			),
-			'zapped'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> true
-			),
-			'zapped_by'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> true
-			)
-		),
-		'PRIMARY KEY'	=> array('id'),
-		'INDEXES'		=> array(
-			'zapped_idx'	=> array('zapped')
-		)
-	);
+	$query->index('forum_id_idx', array('forum_id'));
+	$query->index('moved_to_idx', array('moved_to'));
+	$query->index('last_post_idx', array('last_post'));
+	$query->index('first_post_id_idx', array('first_post_id'));
+	$query->index('PRIMARY', array('id'));
+	$query->run();
 
-	$db->create_table('reports', $schema) or error('Unable to create reports table', __FILE__, __LINE__, $db->error());
+	unset ($query);
 
+	$query = $db->createTable('users');
+	$query->field('id', Flux_Database_Query_Helper_TableColumn::TYPE_SERIAL);
+	$query->field('group_id', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 3, false);
+	$query->field('username', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(200), '', false);
+	$query->field('password', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(40), '', false);
+	$query->field('email', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(80), '', false);
+	$query->field('title', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(50), NULL);
+	$query->field('realname', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(40));
+	$query->field('url', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(100));
+	$query->field('jabber', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(80));
+	$query->field('icq', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(12));
+	$query->field('msn', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(80));
+	$query->field('aim', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(30));
+	$query->field('yahoo', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(30));
+	$query->field('location', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(30));
+	$query->field('signature', Flux_Database_Query_Helper_TableColumn::TYPE_TEXT);
+	$query->field('disp_topics', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT_UNSIGNED);
+	$query->field('disp_posts', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT_UNSIGNED);
 
-	$schema = array(
-		'FIELDS'		=> array(
-			'id'			=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'ident'			=> array(
-				'datatype'		=> 'VARCHAR(200)',
-				'allow_null'	=> false,
-				'default'		=> '\'\''
-			),
-			'search_data'	=> array(
-				'datatype'		=> 'MEDIUMTEXT',
-				'allow_null'	=> true
-			)
-		),
-		'PRIMARY KEY'	=> array('id'),
-		'INDEXES'		=> array(
-			'ident_idx'	=> array('ident')
-		)
-	);
+	$query->field('email_setting', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('notify_with_post', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->field('auto_notify', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->field('show_smilies', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('show_img', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('show_img_sig', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('show_avatars', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('show_sig', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 1, false);
+	$query->field('timezone', Flux_Database_Query_Helper_TableColumn::TYPE_FLOAT, 0, false);
+	$query->field('dst', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->field('time_format', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->field('date_format', Flux_Database_Query_Helper_TableColumn::TYPE_TINYINT, 0, false);
+	$query->field('language', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(25),$default_lang, false);
+	$query->field('style', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(25), $default_style, false);
+	$query->field('num_posts', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('last_post', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED);
+	$query->field('last_search', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED);
+	$query->field('last_email_sent', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED);
+	$query->field('last_report_sent', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED);
+	$query->field('registered', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('registration_ip', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(39), '0.0.0.0', false);
+	$query->field('last_visit', Flux_Database_Query_Helper_TableColumn::TYPE_INT_UNSIGNED, 0, false);
+	$query->field('admin_note', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(30));
+	$query->field('activate_string', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(80));
+	$query->field('activate_key', Flux_Database_Query_Helper_TableColumn::TYPE_VARCHAR(8));
 
-	if ($db_type == 'mysql' || $db_type == 'mysqli' || $db_type == 'mysql_innodb' || $db_type == 'mysqli_innodb')
-		$schema['INDEXES']['ident_idx'] = array('ident(8)');
+	$query->index('username_idx', array('username' => 'username(25)'), true);
+	$query->index('registered_idx', array('registered'));
+	$query->index('PRIMARY', array('id'));
+	$query->run();
 
-	$db->create_table('search_cache', $schema) or error('Unable to create search_cache table', __FILE__, __LINE__, $db->error());
-
-
-	$schema = array(
-		'FIELDS'		=> array(
-			'post_id'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'word_id'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'subject_match'	=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			)
-		),
-		'INDEXES'		=> array(
-			'word_id_idx'	=> array('word_id'),
-			'post_id_idx'	=> array('post_id')
-		)
-	);
-
-	$db->create_table('search_matches', $schema) or error('Unable to create search_matches table', __FILE__, __LINE__, $db->error());
-
-
-	$schema = array(
-		'FIELDS'		=> array(
-			'id'			=> array(
-				'datatype'		=> 'SERIAL',
-				'allow_null'	=> false
-			),
-			'word'			=> array(
-				'datatype'		=> 'VARCHAR(20)',
-				'allow_null'	=> false,
-				'default'		=> '\'\'',
-				'collation'		=> 'bin'
-			)
-		),
-		'PRIMARY KEY'	=> array('word'),
-		'INDEXES'		=> array(
-			'id_idx'	=> array('id')
-		)
-	);
-
-	if ($db_type == 'sqlite')
-	{
-		$schema['PRIMARY KEY'] = array('id');
-		$schema['UNIQUE KEYS'] = array('word_idx'	=> array('word'));
-	}
-
-	$db->create_table('search_words', $schema) or error('Unable to create search_words table', __FILE__, __LINE__, $db->error());
-
-
-	$schema = array(
-		'FIELDS'		=> array(
-			'user_id'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'topic_id'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			)
-		),
-		'PRIMARY KEY'	=> array('user_id', 'topic_id')
-	);
-
-	$db->create_table('topic_subscriptions', $schema) or error('Unable to create topic subscriptions table', __FILE__, __LINE__, $db->error());
-
-
-	$schema = array(
-		'FIELDS'		=> array(
-			'user_id'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'forum_id'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			)
-		),
-		'PRIMARY KEY'	=> array('user_id', 'forum_id')
-	);
-
-	$db->create_table('forum_subscriptions', $schema) or error('Unable to create forum subscriptions table', __FILE__, __LINE__, $db->error());
-
-
-	$schema = array(
-		'FIELDS'		=> array(
-			'id'			=> array(
-				'datatype'		=> 'SERIAL',
-				'allow_null'	=> false
-			),
-			'poster'		=> array(
-				'datatype'		=> 'VARCHAR(200)',
-				'allow_null'	=> false,
-				'default'		=> '\'\''
-			),
-			'subject'		=> array(
-				'datatype'		=> 'VARCHAR(255)',
-				'allow_null'	=> false,
-				'default'		=> '\'\''
-			),
-			'posted'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'first_post_id'	=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'last_post'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'last_post_id'	=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'last_poster'	=> array(
-				'datatype'		=> 'VARCHAR(200)',
-				'allow_null'	=> true
-			),
-			'num_views'		=> array(
-				'datatype'		=> 'MEDIUMINT(8) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'num_replies'	=> array(
-				'datatype'		=> 'MEDIUMINT(8) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'closed'		=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'sticky'		=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'moved_to'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> true
-			),
-			'forum_id'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			)
-		),
-		'PRIMARY KEY'	=> array('id'),
-		'INDEXES'		=> array(
-			'forum_id_idx'		=> array('forum_id'),
-			'moved_to_idx'		=> array('moved_to'),
-			'last_post_idx'		=> array('last_post'),
-			'first_post_id_idx'	=> array('first_post_id')
-		)
-	);
-
-	$db->create_table('topics', $schema) or error('Unable to create topics table', __FILE__, __LINE__, $db->error());
-
-
-	$schema = array(
-		'FIELDS'		=> array(
-			'id'				=> array(
-				'datatype'		=> 'SERIAL',
-				'allow_null'	=> false
-			),
-			'group_id'			=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '3'
-			),
-			'username'			=> array(
-				'datatype'		=> 'VARCHAR(200)',
-				'allow_null'	=> false,
-				'default'		=> '\'\''
-			),
-			'password'			=> array(
-				'datatype'		=> 'VARCHAR(40)',
-				'allow_null'	=> false,
-				'default'		=> '\'\''
-			),
-			'email'				=> array(
-				'datatype'		=> 'VARCHAR(80)',
-				'allow_null'	=> false,
-				'default'		=> '\'\''
-			),
-			'title'				=> array(
-				'datatype'		=> 'VARCHAR(50)',
-				'allow_null'	=> true
-			),
-			'realname'			=> array(
-				'datatype'		=> 'VARCHAR(40)',
-				'allow_null'	=> true
-			),
-			'url'				=> array(
-				'datatype'		=> 'VARCHAR(100)',
-				'allow_null'	=> true
-			),
-			'jabber'			=> array(
-				'datatype'		=> 'VARCHAR(80)',
-				'allow_null'	=> true
-			),
-			'icq'				=> array(
-				'datatype'		=> 'VARCHAR(12)',
-				'allow_null'	=> true
-			),
-			'msn'				=> array(
-				'datatype'		=> 'VARCHAR(80)',
-				'allow_null'	=> true
-			),
-			'aim'				=> array(
-				'datatype'		=> 'VARCHAR(30)',
-				'allow_null'	=> true
-			),
-			'yahoo'				=> array(
-				'datatype'		=> 'VARCHAR(30)',
-				'allow_null'	=> true
-			),
-			'location'			=> array(
-				'datatype'		=> 'VARCHAR(30)',
-				'allow_null'	=> true
-			),
-			'signature'			=> array(
-				'datatype'		=> 'TEXT',
-				'allow_null'	=> true
-			),
-			'disp_topics'		=> array(
-				'datatype'		=> 'TINYINT(3) UNSIGNED',
-				'allow_null'	=> true
-			),
-			'disp_posts'		=> array(
-				'datatype'		=> 'TINYINT(3) UNSIGNED',
-				'allow_null'	=> true
-			),
-			'email_setting'		=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'notify_with_post'	=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'auto_notify'		=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'show_smilies'		=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'show_img'			=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'show_img_sig'		=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'show_avatars'		=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'show_sig'			=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '1'
-			),
-			'timezone'			=> array(
-				'datatype'		=> 'FLOAT',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'dst'				=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'time_format'		=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'date_format'		=> array(
-				'datatype'		=> 'TINYINT(1)',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'language'			=> array(
-				'datatype'		=> 'VARCHAR(25)',
-				'allow_null'	=> false,
-				'default'		=> '\''.$db->escape($default_lang).'\''
-			),
-			'style'				=> array(
-				'datatype'		=> 'VARCHAR(25)',
-				'allow_null'	=> false,
-				'default'		=> '\''.$db->escape($default_style).'\''
-			),
-			'num_posts'			=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'last_post'			=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> true
-			),
-			'last_search'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> true
-			),
-			'last_email_sent'	=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> true
-			),
-			'last_report_sent'	=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> true
-			),
-			'registered'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'registration_ip'	=> array(
-				'datatype'		=> 'VARCHAR(39)',
-				'allow_null'	=> false,
-				'default'		=> '\'0.0.0.0\''
-			),
-			'last_visit'		=> array(
-				'datatype'		=> 'INT(10) UNSIGNED',
-				'allow_null'	=> false,
-				'default'		=> '0'
-			),
-			'admin_note'		=> array(
-				'datatype'		=> 'VARCHAR(30)',
-				'allow_null'	=> true
-			),
-			'activate_string'	=> array(
-				'datatype'		=> 'VARCHAR(80)',
-				'allow_null'	=> true
-			),
-			'activate_key'		=> array(
-				'datatype'		=> 'VARCHAR(8)',
-				'allow_null'	=> true
-			),
-		),
-		'PRIMARY KEY'	=> array('id'),
-		'UNIQUE KEYS'	=> array(
-			'username_idx'		=> array('username')
-		),
-		'INDEXES'		=> array(
-			'registered_idx'	=> array('registered')
-		)
-	);
-
-	if ($db_type == 'mysql' || $db_type == 'mysqli' || $db_type == 'mysql_innodb' || $db_type == 'mysqli_innodb')
-		$schema['UNIQUE KEYS']['username_idx'] = array('username(25)');
-
-	$db->create_table('users', $schema) or error('Unable to create users table', __FILE__, __LINE__, $db->error());
+	unset ($query);
 
 
 	$now = time();
 
 	// Insert the four preset groups
-	$db->query('INSERT INTO '.$db->prefix.'groups ('.($db_type != 'pgsql' ? 'g_id, ' : '').'g_title, g_user_title, g_moderator, g_mod_edit_users, g_mod_rename_users, g_mod_change_passwords, g_mod_ban_users, g_read_board, g_view_users, g_post_replies, g_post_topics, g_edit_posts, g_delete_posts, g_delete_topics, g_set_title, g_search, g_search_users, g_send_email, g_post_flood, g_search_flood, g_email_flood, g_report_flood) VALUES('.($db_type != 'pgsql' ? '1, ' : '').'\''.$db->escape($lang->t('Administrators')).'\', \''.$db->escape($lang->t('Administrator')).'\', 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0)') or error('Unable to add group', __FILE__, __LINE__, $db->error());
+	// TODO: should g_id be removed for the pgsql?
+	$query = $db->insert(array('g_id' => ':g_id', 'g_title' => ':g_title', 'g_user_title' => ':g_user_title', 'g_moderator' => ':g_moderator', 'g_mod_edit_users' => ':g_mod_edit_users', 'g_mod_rename_users' => ':g_mod_rename_users', 'g_mod_change_passwords' => ':g_mod_change_passwords', 'g_mod_ban_users' => ':g_mod_ban_users', 'g_read_board' => ':g_read_board', 'g_view_users' => ':g_view_users', 'g_post_replies' => ':g_post_replies', 'g_post_topics' => ':g_post_topics', 'g_edit_posts' => ':g_edit_posts', 'g_delete_posts' => ':g_delete_posts', 'g_delete_topics' => ':g_delete_topics', 'g_set_title' => ':g_set_title', 'g_search' => ':g_search', 'g_search_users' => ':g_search_users', 'g_send_email' => ':g_send_email', 'g_post_flood' => ':g_post_flood', 'g_search_flood' => ':g_search_flood', 'g_email_flood' => ':g_email_flood', 'g_report_flood' => ':g_report_flood'), 'groups');
 
-	$db->query('INSERT INTO '.$db->prefix.'groups ('.($db_type != 'pgsql' ? 'g_id, ' : '').'g_title, g_user_title, g_moderator, g_mod_edit_users, g_mod_rename_users, g_mod_change_passwords, g_mod_ban_users, g_read_board, g_view_users, g_post_replies, g_post_topics, g_edit_posts, g_delete_posts, g_delete_topics, g_set_title, g_search, g_search_users, g_send_email, g_post_flood, g_search_flood, g_email_flood, g_report_flood) VALUES('.($db_type != 'pgsql' ? '2, ' : '').'\''.$db->escape($lang->t('Moderators')).'\', \''.$db->escape($lang->t('Moderator')).'\', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0)') or error('Unable to add group', __FILE__, __LINE__, $db->error());
+	$params = array(':g_id' => 1, ':g_title' => $lang->t('Administrators'), ':g_user_title' => $lang->t('Administrator'), ':g_moderator' => 0, ':g_mod_edit_users' => 0, ':g_mod_rename_users' => 0, ':g_mod_change_passwords' => 0, ':g_mod_ban_users' => 0, ':g_read_board' => 1, ':g_view_users' => 1, ':g_post_replies' => 1, ':g_post_topics' => 1, ':g_edit_posts' => 1, ':g_delete_posts' => 1, ':g_delete_topics' => 1, ':g_set_title' => 1, ':g_search' => 1, ':g_search_users' => 1, ':g_send_email' => 1, ':g_post_flood' => 0, ':g_search_flood' => 0, ':g_email_flood' => 0, ':g_report_flood' => 0);
+	$query->run($params);
+	unset($params);
 
-	$db->query('INSERT INTO '.$db->prefix.'groups ('.($db_type != 'pgsql' ? 'g_id, ' : '').'g_title, g_user_title, g_moderator, g_mod_edit_users, g_mod_rename_users, g_mod_change_passwords, g_mod_ban_users, g_read_board, g_view_users, g_post_replies, g_post_topics, g_edit_posts, g_delete_posts, g_delete_topics, g_set_title, g_search, g_search_users, g_send_email, g_post_flood, g_search_flood, g_email_flood, g_report_flood) VALUES('.($db_type != 'pgsql' ? '3, ' : '').'\''.$db->escape($lang->t('Guests')).'\', NULL, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 60, 30, 0, 0)') or error('Unable to add group', __FILE__, __LINE__, $db->error());
+	$params = array(':g_id' => 2, ':g_title' => $lang->t('Moderators'), ':g_user_title' => $lang->t('Moderator'), ':g_moderator' => 1, ':g_mod_edit_users' => 1, ':g_mod_rename_users' => 1, ':g_mod_change_passwords' => 1, ':g_mod_ban_users' => 1, ':g_read_board' => 1, ':g_view_users' => 1, ':g_post_replies' => 1, ':g_post_topics' => 1, ':g_edit_posts' => 1, ':g_delete_posts' => 1, ':g_delete_topics' => 1, ':g_set_title' => 1, ':g_search' => 1, ':g_search_users' => 1, ':g_send_email' => 1, ':g_post_flood' => 0, ':g_search_flood' => 0, ':g_email_flood' => 0, ':g_report_flood' => 0);
+	$query->run($params);
+	unset($params);
 
-	$db->query('INSERT INTO '.$db->prefix.'groups ('.($db_type != 'pgsql' ? 'g_id, ' : '').'g_title, g_user_title, g_moderator, g_mod_edit_users, g_mod_rename_users, g_mod_change_passwords, g_mod_ban_users, g_read_board, g_view_users, g_post_replies, g_post_topics, g_edit_posts, g_delete_posts, g_delete_topics, g_set_title, g_search, g_search_users, g_send_email, g_post_flood, g_search_flood, g_email_flood, g_report_flood) VALUES('.($db_type != 'pgsql' ? '4, ' : '').'\''.$db->escape($lang->t('Members')).'\', NULL, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 60, 30, 60, 60)') or error('Unable to add group', __FILE__, __LINE__, $db->error());
+	$params = array(':g_id' => 3, ':g_title' => $lang->t('Guests'), ':g_user_title' => NULL, ':g_moderator' => 0, ':g_mod_edit_users' => 0, ':g_mod_rename_users' => 0, ':g_mod_change_passwords' => 0, ':g_mod_ban_users' => 0, ':g_read_board' => 1, ':g_view_users' => 1, ':g_post_replies' => 0, ':g_post_topics' => 0, ':g_edit_posts' => 0, ':g_delete_posts' => 0, ':g_delete_topics' => 0, ':g_set_title' => 0, ':g_search' => 1, ':g_search_users' => 1, ':g_send_email' => 0, ':g_post_flood' => 60, ':g_search_flood' => 30, ':g_email_flood' => 0, ':g_report_flood' => 0);
+	$query->run($params);
+	unset($params);
+
+	$params = array(':g_id' => 4, ':g_title' => $lang->t('Members'), ':g_user_title' => NULL, ':g_moderator' => 0, ':g_mod_edit_users' => 0, ':g_mod_rename_users' => 0, ':g_mod_change_passwords' => 0, ':g_mod_ban_users' => 0, ':g_read_board' => 1, ':g_view_users' => 1, ':g_post_replies' => 1, ':g_post_topics' => 1, ':g_edit_posts' => 1, ':g_delete_posts' => 1, ':g_delete_topics' => 1, ':g_set_title' => 0, ':g_search' => 1, ':g_search_users' => 1, ':g_send_email' => 1, ':g_post_flood' => 60, ':g_search_flood' => 30, ':g_email_flood' => 60, ':g_report_flood' => 60);
+	$query->run($params);
+	unset($params);
+
+	unset($query);
 
 	// Insert guest and first admin user
 	$query = $db->insert(array('group_id' => ':group_id', 'username' => ':username', 'password' => ':password', 'email' => ':email'), 'users');
-	$params = array(':group_id' => 3, ':username' => $lang->t('Guest'), ':password', $lang->t('Guest'), ':email' => $lang->t('Guest'));
+	$params = array(':group_id' => 3, ':username' => $lang->t('Guest'), ':password' => $lang->t('Guest'), ':email' => $lang->t('Guest'));
 	$query->run($params);
 	unset($query, $params);
 
@@ -1638,7 +971,6 @@ else
 		'o_avatars_height'			=> 60,
 		'o_avatars_size'			=> 10240,
 		'o_search_all_forums'		=> 1,
-		'o_base_url'				=> $base_url,
 		'o_admin_email'				=> $email,
 		'o_webmaster_email'			=> $email,
 		'o_forum_subscriptions'		=> 1,
@@ -1650,9 +982,9 @@ else
 		'o_regs_allow'				=> 1,
 		'o_regs_verify'				=> 0,
 		'o_announcement'			=> 0,
-		'o_announcement_message'	=> $lang->t('Announcement'),
+		'o_announcement_message'	=> $lang->t('Enter announcement'),
 		'o_rules'					=> 0,
-		'o_rules_message'			=> $lang->t('Rules'),
+		'o_rules_message'			=> $lang->t('Enter rules'),
 		'o_maintenance'				=> 0,
 		'o_maintenance_message'		=> $lang->t('Maintenance message'),
 		'o_default_dst'				=> 0,
@@ -1684,7 +1016,7 @@ else
 
 	// Insert some other default data
 	$subject = $lang->t('Test post');
-	$message = $lang->t('Message');
+	$message = $lang->t('Test post example');
 
 	$query = $db->insert(array('rank' => ':rank', 'min_posts' => ':min_posts'), 'ranks');
 
@@ -1723,7 +1055,7 @@ else
 	$pun_config['o_default_lang'] = $default_lang;
 	update_search_index('post', 1, $message, $subject);
 
-	$db->end_transaction();
+	$db->commitTransaction();
 
 
 	$alerts = array();
@@ -1803,6 +1135,7 @@ if (!$written)
 				<input type="hidden" name="db_prefix" value="<?php echo pun_htmlspecialchars($db_prefix); ?>" />
 				<input type="hidden" name="cookie_name" value="<?php echo pun_htmlspecialchars($cookie_name); ?>" />
 				<input type="hidden" name="cookie_seed" value="<?php echo pun_htmlspecialchars($cookie_seed); ?>" />
+				<input type="hidden" name="base_url" value="<?php echo pun_htmlspecialchars($base_url); ?>" />
 
 <?php if (!empty($alerts)): ?>				<div class="forminfo error-info">
 					<ul class="error-list">
