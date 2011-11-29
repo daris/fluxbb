@@ -45,6 +45,9 @@ require PUN_ROOT.'include/functions.php';
 require PUN_ROOT.'modules/utf8/php-utf8.php';
 require PUN_ROOT.'modules/utf8/functions/trim.php';
 
+// Initialize template system
+require PUN_ROOT.'include/twig.php';
+
 // Strip out "bad" UTF-8 characters
 forum_remove_bad_characters();
 
@@ -205,3 +208,10 @@ if (!defined('PUN_SEARCH_MAX_WORD'))
 
 if (!defined('FORUM_MAX_COOKIE_SIZE'))
 	define('FORUM_MAX_COOKIE_SIZE', 4048);
+
+
+$flux_page = array(
+	'user' => $pun_user,
+	'lang'	=> $lang,
+	'config'	=> $pun_config,
+);

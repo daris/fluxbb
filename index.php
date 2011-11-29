@@ -81,28 +81,7 @@ foreach ($result as $cur_forum)
 
 	if ($cur_forum['cid'] != $cur_category) // A new category since last iteration?
 	{
-		if ($cur_category != 0)
-			echo "\t\t\t".'</tbody>'."\n\t\t\t".'</table>'."\n\t\t".'</div>'."\n\t".'</div>'."\n".'</div>'."\n\n";
-
-		++$cat_count;
-		$forum_count = 0;
-
-?>
-<div id="idx<?php echo $cat_count ?>" class="blocktable">
-	<h2><span><?php echo pun_htmlspecialchars($cur_forum['cat_name']) ?></span></h2>
-	<div class="box">
-		<div class="inbox">
-			<table cellspacing="0">
-			<thead>
-				<tr>
-					<th class="tcl" scope="col"><?php echo $lang->t('Forum') ?></th>
-					<th class="tc2" scope="col"><?php echo $lang->t('Topics') ?></th>
-					<th class="tc3" scope="col"><?php echo $lang->t('Posts') ?></th>
-					<th class="tcr" scope="col"><?php echo $lang->t('Last post') ?></th>
-				</tr>
-			</thead>
-			<tbody>
-<?php
+		$flux_page['categories'][] = array('cat_id' => $cur_forum['cid'], 'cat_name' => $cur_forum['cat_name'], 'forums' => array());
 
 		$cur_category = $cur_forum['cid'];
 	}
@@ -120,9 +99,10 @@ foreach ($result as $cur_forum)
 		{
 			if ((empty($tracked_topics['topics'][$check_topic_id]) || $tracked_topics['topics'][$check_topic_id] < $check_last_post) && (empty($tracked_topics['forums'][$cur_forum['fid']]) || $tracked_topics['forums'][$cur_forum['fid']] < $check_last_post))
 			{
-				$item_status .= ' inew';
-				$forum_field_new = '<span class="newtext">[ <a href="search.php?action=show_new&amp;fid='.$cur_forum['fid'].'">'.$lang->t('New posts').'</a> ]</span>';
-				$icon_type = 'icon icon-new';
+//				$item_status .= ' inew';
+//				$forum_field_new = '<span class="newtext">[ <a href="search.php?action=show_new&amp;fid='.$cur_forum['fid'].'">'.$lang->t('New posts').'</a> ]</span>';
+//				$icon_type = 'icon icon-new';
+				$cur_forum['new_posts'] = true;
 
 				break;
 			}
@@ -157,7 +137,7 @@ foreach ($result as $cur_forum)
 
 	if ($cur_forum['moderators'] != '')
 	{
-		$mods_array = unserialize($cur_forum['moderators']);
+		$cur_forum = unserialize($cur_forum['moderators']);
 		$moderators = array();
 
 		foreach ($mods_array as $mod_username => $mod_id)
@@ -171,35 +151,22 @@ foreach ($result as $cur_forum)
 		$moderators = "\t\t\t\t\t\t\t\t".'<p class="modlist">(<em>'.$lang->t('Moderated by').'</em> '.implode(', ', $moderators).')</p>'."\n";
 	}
 
-?>
-				<tr class="<?php echo $item_status ?>">
-					<td class="tcl">
-						<div class="<?php echo $icon_type ?>"><div class="nosize"><?php echo forum_number_format($forum_count) ?></div></div>
-						<div class="tclcon">
-							<div>
-								<?php echo $forum_field."\n".$moderators ?>
-							</div>
-						</div>
-					</td>
-					<td class="tc2"><?php echo forum_number_format($num_topics) ?></td>
-					<td class="tc3"><?php echo forum_number_format($num_posts) ?></td>
-					<td class="tcr"><?php echo $last_post ?></td>
-				</tr>
-<?php
-
+	$current_cat = count($flux_page['categories']) - 1;
+	$flux_page['categories'][$current_cat]['forums'][] = $cur_forum;
 }
 
 unset ($query, $params, $result);
+//print_r($flux_page);exit;
 
 // Did we output any categories and forums?
-if ($cur_category > 0)
-	echo "\t\t\t".'</tbody>'."\n\t\t\t".'</table>'."\n\t\t".'</div>'."\n\t".'</div>'."\n".'</div>'."\n\n";
-else
-	echo '<div id="idx0" class="block"><div class="box"><div class="inbox"><p>'.$lang->t('Empty board').'</p></div></div></div>';
+//if ($cur_category > 0)
+//	echo "\t\t\t".'</tbody>'."\n\t\t\t".'</table>'."\n\t\t".'</div>'."\n\t".'</div>'."\n".'</div>'."\n\n";
+//else
+//	echo '<div id="idx0" class="block"><div class="box"><div class="inbox"><p>'.$lang->t('Empty board').'</p></div></div></div>';
 
 // Collect some board statistics
 $stats = fetch_board_stats();
-
+/*
 $query = $db->select(array('total_topics' => 'SUM(f.num_topics) AS total_topics', 'total_posts' => 'SUM(f.num_posts) AS total_posts'), 'forums AS f');
 $params = array();
 
@@ -288,6 +255,6 @@ else
 	</div>
 </div>
 <?php
-
+*/
 $footer_style = 'index';
 require PUN_ROOT.'footer.php';

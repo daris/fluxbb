@@ -10,11 +10,22 @@
 if (!defined('PUN'))
 	exit;
 
-$tpl_temp = trim(ob_get_contents());
-$tpl_main = str_replace('<pun_main>', $tpl_temp, $tpl_main);
-ob_end_clean();
+
+//ob_end_clean();
 // END SUBST - <pun_main>
 
+$template_file = str_replace('.php', '.tpl', basename($_SERVER['SCRIPT_FILENAME']));
+if (file_exists(PUN_ROOT.'templates/'.$template_file))
+	$template_main = $twig->render($template_file, $flux_page);
+
+// Fallback when file is not rewritten to the twig template system
+else
+	$template_main = ob_get_clean();
+
+//echo $template_main;
+$flux_page['page_output'] = $template_main;
+echo $twig->render('main.tpl', $flux_page);
+/*
 
 // START SUBST - <pun_footer>
 ob_start();
@@ -202,11 +213,11 @@ if (defined('PUN_DEBUG'))
 
 	echo ' ]</p>'."\n";
 }
-
+*/
 
 // End the transaction
 $db->commitTransaction();
-
+/*
 // Display executed queries (if enabled)
 if (defined('PUN_SHOW_QUERIES'))
 	display_saved_queries();
@@ -215,10 +226,10 @@ $tpl_temp = trim(ob_get_contents());
 $tpl_main = str_replace('<pun_footer>', $tpl_temp, $tpl_main);
 ob_end_clean();
 // END SUBST - <pun_footer>
-
+*/
 
 // Close the db connection (and free up any result data)
 unset ($db);
 
 // Spit out the page
-exit($tpl_main);
+//exit($tpl_main);
