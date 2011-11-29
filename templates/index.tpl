@@ -24,8 +24,8 @@
 					<div class="tclcon">
 						<div>
 							<h3>{% if cur_forum.redirect_url is not empty %}<span class="redirtext">{{ lang.t('Link to') }}</span> {% endif %}<a href="viewforum.php?id={{ cur_forum.fid }}">{{ cur_forum.forum_name }}</a>{% if cur_forum.new_posts %}<span class="newtext">[ <a href="search.php?action=show_new&amp;fid={{ cur_forum.fid }}">{{ lang.t('New posts') }}</a> ]</span>{% endif %}</h3>
-{% if cur_forum.forum_desc is not empty %}							<div class="forumdesc">{% autoescape false %}{{ cur_forum.forum_desc }}{% endautoescape %}</div>{% endif %}
-							{% if cur_forum.moderators is not empty %}<p class="modlist">(<em>{{ lang.t('Moderated by') }}</em>{% for cur_mod_id,cur_mod_username in cur_forum.moderators %}{{ user_link(cur_mod_id, cur_mod_username) }}{% endfor %}</p>{% endif %}
+{% if cur_forum.forum_desc is not empty %}							<div class="forumdesc">{{ cur_forum.forum_desc|raw }}</div>{% endif %}
+{% if cur_forum.moderators is not empty %}							<p class="modlist">(<em>{{ lang.t('Moderated by') }}</em> {% for mod_username, mod_id in cur_forum.moderators %}{{ not_first is defined ? ', ' : '' }}{% set not_first=1 %}{% if user['g_view_users'] == '1' %}<a href="profile.php?id={{ mod_id }}">{{ mod_username }}</a>{% else %}{{ mod_username }}{% endif %}{% endfor %})</p>{% endif %}
 						</div>
 					</div>
 				</td>
@@ -43,3 +43,43 @@
 </div>
 
 {% endfor %}
+
+{% if actions is not empty %}
+<div class="linksb">
+	<div class="inbox crumbsplus">
+		<p class="subscribelink clearb">{{ actions|join(' - ')|raw }}</p>
+	</div>
+</div>
+{% endif %}
+
+<div id="brdstats" class="block">
+	<h2><span>{{ lang.t('Board info') }}</span></h2>
+	<div class="box">
+		<div class="inbox">
+			<dl class="conr">
+				<dt><strong>{{ lang.t('Board stats') }}</strong></dt>
+				<dd><span>{% set num %}<strong>{{ stats['total_users']|number }}</strong>{% endset %}{{ lang.t('No of users', num)|raw }}</span></dd>
+				<dd><span>{% set num %}<strong>{{ stats['total_topics']|number }}</strong>{% endset %}{{ lang.t('No of topics', num)|raw }}</span></dd>
+				<dd><span>{% set num %}<strong>{{ stats['total_posts']|number }}</strong>{% endset %}{{ lang.t('No of posts', num)|raw }}</span></dd>
+			</dl>
+			<dl class="conl">
+				<dt><strong>{{ lang.t('User info') }}</strong></dt>
+				<dd><span>{% set last_user %}{% if user['g_view_users'] == 1 %}<a href="profile.php?id={{ stats.last_user.id }}">{{ stats.last_user.username }}</a>{% else %}{{ stats.last_user.username }}{% endif %}{% endset %}{{ lang.t('Newest user', last_user)|raw }}</span></dd>
+{% if stats.users_online %}
+				<dd><span>{% set num %}<strong>{{ stats.users_online|length|number }}</strong>{% endset %}{{ lang.t('Users online', num)|raw }}</span></dd>
+				<dd><span>{% set num %}<strong>{{ stats.num_guests_online|number }}</strong>{% endset %}{{ lang.t('Guests online', num)|raw }}</span></dd>
+			</dl>
+{% if stats.users_online is not empty %}
+			<dl id="onlinelist" class="clearb">
+				<dt><strong>{{ lang.t('Online') }} </strong></dt>
+{% for user_id, ident in stats.users_online %}<dd>{% if user['g_view_users'] == 1 %}<a href="profile.php?id={{ user_id }}">{{ ident }}</a>{% else %}{{ ident }}{% endif %}</dd>{% endfor %}
+
+{% endif %}
+{% else %}
+			</dl>
+			<div class="clearer"></div>
+{% endif %}
+
+		</div>
+	</div>
+</div>

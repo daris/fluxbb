@@ -24,57 +24,22 @@ else
 
 //echo $template_main;
 $flux_page['page_output'] = $template_main;
-echo $twig->render('main.tpl', $flux_page);
-/*
 
-// START SUBST - <pun_footer>
-ob_start();
+// If no footer style has been specified, we use the default (only copyright/debug info)
+$footer_style = isset($footer_style) ? $footer_style : NULL;
 
-?>
-<div id="brdfooter" class="block">
-	<h2><span><?php echo $lang->t('Board footer') ?></span></h2>
-	<div class="box">
-<?php
-
-if (isset($footer_style) && ($footer_style == 'viewforum' || $footer_style == 'viewtopic') && $is_admmod)
-{
-	echo "\t\t".'<div id="modcontrols" class="inbox">'."\n";
-
-	if ($footer_style == 'viewforum')
-	{
-		echo "\t\t\t".'<dl>'."\n";
-		echo "\t\t\t\t".'<dt><strong>'.$lang->t('Mod controls').'</strong></dt>'."\n";
-		echo "\t\t\t\t".'<dd><span><a href="moderate.php?fid='.$forum_id.'&amp;p='.$p.'">'.$lang->t('Moderate forum').'</a></span></dd>'."\n";
-		echo "\t\t\t".'</dl>'."\n";
-	}
-	else if ($footer_style == 'viewtopic')
-	{
-		echo "\t\t\t".'<dl>'."\n";
-		echo "\t\t\t\t".'<dt><strong>'.$lang->t('Mod controls').'</strong></dt>'."\n";
-		echo "\t\t\t\t".'<dd><span><a href="moderate.php?fid='.$forum_id.'&amp;tid='.$id.'&amp;p='.$p.'">'.$lang->t('Moderate topic').'</a></span></dd>'."\n";
-		echo "\t\t\t\t".'<dd><span><a href="moderate.php?fid='.$forum_id.'&amp;move_topics='.$id.'">'.$lang->t('Move topic').'</a></span></dd>'."\n";
-
-		if ($cur_topic['closed'] == '1')
-			echo "\t\t\t\t".'<dd><span><a href="moderate.php?fid='.$forum_id.'&amp;open='.$id.'">'.$lang->t('Open topic').'</a></span></dd>'."\n";
-		else
-			echo "\t\t\t\t".'<dd><span><a href="moderate.php?fid='.$forum_id.'&amp;close='.$id.'">'.$lang->t('Close topic').'</a></span></dd>'."\n";
-
-		if ($cur_topic['sticky'] == '1')
-			echo "\t\t\t\t".'<dd><span><a href="moderate.php?fid='.$forum_id.'&amp;unstick='.$id.'">'.$lang->t('Unstick topic').'</a></span></dd>'."\n";
-		else
-			echo "\t\t\t\t".'<dd><span><a href="moderate.php?fid='.$forum_id.'&amp;stick='.$id.'">'.$lang->t('Stick topic').'</a></span></dd>'."\n";
-
-		echo "\t\t\t".'</dl>'."\n";
-	}
-
-	echo "\t\t\t".'<div class="clearer"></div>'."\n\t\t".'</div>'."\n";
-}
-
-?>
-		<div id="brdfooternav" class="inbox">
-<?php
-
-echo "\t\t\t".'<div class="conl">'."\n";
+if (isset($footer_style))
+	$flux_page['footer_style'] = $footer_style;
+if (isset($forum_id))
+	$flux_page['forum_id'] = $forum_id;
+if (isset($is_admmod))
+	$flux_page['is_admmod'] = $is_admmod;
+if (isset($p))
+	$flux_page['p'] = $p;
+if (isset($id))
+	$flux_page['id'] = $id;
+if (isset($cur_topic))
+	$flux_page['cur_topic'] = $cur_topic;
 
 // Display the "Jump to" drop list
 if ($pun_config['o_quickjump'] == '1')
@@ -115,105 +80,42 @@ if ($pun_config['o_quickjump'] == '1')
 		$cache->set('quickjump', $quickjump);
 	}
 
+	$flux_page['quickjump'] = array();
+
 	if (!empty($quickjump[$pun_user['g_id']]))
 	{
-?>
-				<form id="qjump" method="get" action="viewforum.php">
-					<div>
-						<label>
-							<span><?php echo $lang->t('Jump to') ?><br /></span>
-							<select name="id" onchange="window.location=('viewforum.php?id='+this.options[this.selectedIndex].value)">
-<?php
-
 		$cur_category = 0;
 		foreach ($quickjump[$pun_user['g_id']] as $cur_forum)
 		{
 			if ($cur_forum['cid'] != $cur_category) // A new category since last iteration?
 			{
-				if ($cur_category)
-					echo "\t\t\t\t\t\t\t\t".'</optgroup>'."\n";
-
-				echo "\t\t\t\t\t\t".'<optgroup label="'.pun_htmlspecialchars($cur_forum['cat_name']).'">'."\n";
+				$flux_page['quickjump'][] = array('cat_name' => $cur_forum['cat_name'], 'forums' => array());
 				$cur_category = $cur_forum['cid'];
 			}
 
-			$redirect_tag = ($cur_forum['redirect_url'] != '') ? ' &gt;&gt;&gt;' : '';
-			echo "\t\t\t\t\t\t\t".'<option value="'.$cur_forum['fid'].'"'. (isset($forum_id) && $forum_id == $cur_forum['fid'] ? ' selected="selected"' : '').'>'.pun_htmlspecialchars($cur_forum['forum_name']).$redirect_tag.'</option>'."\n";
+			$flux_page['quickjump'][count($flux_page['quickjump']) - 1]['forums'][] = $cur_forum;
 		}
-
-?>
-								</optgroup>
-							</select>
-							<input type="submit" value="<?php echo $lang->t('Go') ?>" accesskey="g" />
-						</label>
-					</div>
-				</form>
-<?php
-
 	}
 }
-
-echo "\t\t\t".'</div>'."\n";
-
-?>
-			<div class="conr">
-<?php
-
-// If no footer style has been specified, we use the default (only copyright/debug info)
-$footer_style = isset($footer_style) ? $footer_style : NULL;
-
-if ($footer_style == 'index')
-{
-	if ($pun_config['o_feed_type'] == '1')
-		echo "\t\t\t\t".'<p id="feedlinks"><span class="rss"><a href="extern.php?action=feed&amp;type=rss">'.$lang->t('RSS active topics feed').'</a></span></p>'."\n";
-	else if ($pun_config['o_feed_type'] == '2')
-		echo "\t\t\t\t".'<p id="feedlinks"><span class="atom"><a href="extern.php?action=feed&amp;type=atom">'.$lang->t('Atom active topics feed').'</a></span></p>'."\n";
-}
-else if ($footer_style == 'viewforum')
-{
-	if ($pun_config['o_feed_type'] == '1')
-		echo "\t\t\t\t".'<p id="feedlinks"><span class="rss"><a href="extern.php?action=feed&amp;fid='.$forum_id.'&amp;type=rss">'.$lang->t('RSS forum feed').'</a></span></p>'."\n";
-	else if ($pun_config['o_feed_type'] == '2')
-		echo "\t\t\t\t".'<p id="feedlinks"><span class="atom"><a href="extern.php?action=feed&amp;fid='.$forum_id.'&amp;type=atom">'.$lang->t('Atom forum feed').'</a></span></p>'."\n";
-}
-else if ($footer_style == 'viewtopic')
-{
-	if ($pun_config['o_feed_type'] == '1')
-		echo "\t\t\t\t".'<p id="feedlinks"><span class="rss"><a href="extern.php?action=feed&amp;tid='.$id.'&amp;type=rss">'.$lang->t('RSS topic feed').'</a></span></p>'."\n";
-	else if ($pun_config['o_feed_type'] == '2')
-		echo "\t\t\t\t".'<p id="feedlinks"><span class="atom"><a href="extern.php?action=feed&amp;tid='.$id.'&amp;type=atom">'.$lang->t('Atom topic feed').'</a></span></p>'."\n";
-}
-
-?>
-				<p id="poweredby"><?php echo $lang->t('Powered by', '<a href="http://fluxbb.org/">FluxBB</a>'.(($pun_config['o_show_version'] == '1') ? ' '.$pun_config['o_cur_version'] : '')) ?></p>
-			</div>
-			<div class="clearer"></div>
-		</div>
-	</div>
-</div>
-<?php
 
 // Display debug info (if enabled/defined)
 if (defined('PUN_DEBUG'))
 {
-	echo '<p id="debugtime">[ ';
-
 	// Calculate script generation time
 	$time_diff = sprintf('%.3f', get_microtime() - $pun_start);
 	$queries = $db->getExecutedQueries();
-	echo $lang->t('Querytime', $time_diff, count($queries));
+	$flux_page['query_time'] = $time_diff;
+	$flux_page['num_queries'] = count($queries);
 
 	if (function_exists('memory_get_usage'))
 	{
-		echo ' - '.$lang->t('Memory usage', file_size(memory_get_usage()));
+		$flux_page['memory_usage'] = file_size(memory_get_usage());
 
 		if (function_exists('memory_get_peak_usage'))
-			echo ' '.$lang->t('Peak usage', file_size(memory_get_peak_usage()));
+			$flux_page['peak_usage'] = file_size(memory_get_peak_usage());
 	}
-
-	echo ' ]</p>'."\n";
 }
-*/
+
 
 // End the transaction
 $db->commitTransaction();
@@ -232,4 +134,4 @@ ob_end_clean();
 unset ($db);
 
 // Spit out the page
-//exit($tpl_main);
+echo $twig->render('main.tpl', $flux_page);

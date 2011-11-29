@@ -51,37 +51,34 @@ function process_form(the_form)
 	<div class="box">
 		<div id="brdtitle" class="inbox">
 			<h1><a href="index.php">{{ header_title }}</a></h1>
-			<div id="brddesc">{% autoescape false %}{{ header_desc }}{% endautoescape %}</div>
+			<div id="brddesc">{{ header_desc|raw }}</div>
 		</div>
 
 		<div id="brdmenu" class="inbox">
 			<ul>
-{% autoescape false %}
 {% for link in navigation_links %}
-				{{ link }}
+				{{ link|raw }}
 {% endfor %}
-{% endautoescape %}
 			</ul>
 		</div>
 
 		<div id="brdwelcome" class="inbox">
 
-{% autoescape false %}
+
 {% if is_array(status_info) %}
 			<ul class="conl">
 	{% for info in status_info %}
-			{{ info }}
+			{{ info|raw }}
 	{% endfor %}
 			</ul>
 {% else %}
-			{{ status_info }}
+			{{ status_info|raw }}
 {% endif %}
-{% endautoescape %}
 
 
 {% if topic_searches is not empty %}
 			<ul class="conr">
-				<li><span>{{ lang.t('Topic searches') }} {% autoescape false %}{{ topic_searches|join(' | ') }}{% endautoescape %}</span></li>
+				<li><span>{{ lang.t('Topic searches') }} {{ topic_searches|join(' | ')|raw }}</span></li>
 			</ul>
 {% endif %}
 
@@ -96,21 +93,104 @@ function process_form(the_form)
 	<div class="hd"><h2><span>{{ lang.t('Announcement') }}</span></h2></div>
 	<div class="box">
 		<div id="announce-block" class="inbox">
-			<div class="usercontent">{% autoescape false %}{{ config['o_announcement_message'] }}{% endautoescape %}</div>
+			<div class="usercontent">{{ config['o_announcement_message']|raw }}</div>
 		</div>
 	</div>
 </div>
 {% endif %}
 
+{# Main page #}
 <div id="brdmain">
 
-{% autoescape false %}
-{{ page_output }}
-{% endautoescape %}
+{{ page_output|raw }}
 
 </div>
 
-<pun_footer>
+{# Footer #}
+<div id="brdfooter" class="block">
+	<h2><span>{{ lang.t('Board footer') }}</span></h2>
+	<div class="box">
+
+{% if footer_style is defined and (footer_style == 'viewforum' or footer_style == 'viewtopic') or is_admmod %}
+		<div id="modcontrols" class="inbox">
+
+{% if footer_style == 'viewforum' %}
+			<dl>
+				<dt><strong>{{ lang.t('Mod controls') }}</strong></dt>
+				<dd><span><a href="moderate.php?fid={{ forum_id }}&amp;p={{ p }}">{{ lang.t('Moderate forum') }}</a></span></dd>
+			</dl>
+{% elseif footer_style == 'viewtopic' %}
+			<dl>
+				<dt><strong>{{ lang.t('Mod controls') }}</strong></dt>
+				<dd><span><a href="moderate.php?fid={{ forum_id }}&amp;tid={{ id }}&amp;p={{ p }}">{{ lang.t('Moderate topic') }}</a></span></dd>
+				<dd><span><a href="moderate.php?fid={{ forum_id }}&amp;move_topics={{ id }}">{{ lang.t('Move topic') }}</a></span></dd>
+
+{% if cur_topic['closed'] == 1 %}
+				<dd><span><a href="moderate.php?fid={{ forum_id }}&amp;open={{ id }}">{{ lang.t('Open topic') }}</a></span></dd>
+{% else %}
+				<dd><span><a href="moderate.php?fid={{ forum_id }}&amp;close={{ id }}">{{ lang.t('Close topic') }}</a></span></dd>
+{% endif %}
+
+{% if cur_topic['sticky'] == 1 %}
+				<dd><span><a href="moderate.php?fid={{ forum_id }}&amp;unstick={{ id }}">{{ lang.t('Unstick topic') }}</a></span></dd>
+{% else %}
+				<dd><span><a href="moderate.php?fid={{ forum_id }}&amp;stick={{ id }}">{{ lang.t('Stick topic') }}</a></span></dd>
+{% endif %}
+
+			</dl>
+{% endif %}
+
+			<div class="clearer"></div>
+		</div>
+{% endif %}
+
+		<div id="brdfooternav" class="inbox">
+			<div class="conl">
+{% if quickjump is defined and quickjump is not empty %}
+				<form id="qjump" method="get" action="viewforum.php">
+					<div>
+						<label>
+							<span>{{ lang.t('Jump to') }}<br /></span>
+							<select name="id" onchange="window.location=('viewforum.php?id='+this.options[this.selectedIndex].value)">
+{% for cur_cat in quickjump %}								<optgroup label="{{ cur_cat.cat_name }}">
+{% for cur_forum in cur_cat.forums %}
+								<option value="{{ cur_forum.fid }}"{{ forum_id is defined and forum_id == cur_forum.fid ? ' selected="selected"' : ''}}>{{ cur_forum.forum_name }}{{ cur_forum.redirect_url == '' ? '' : ' &gt;&gt;&gt;' }}</option>
+{% endfor %}								</optgroup>
+{% endfor %}
+
+							</select>
+							<input type="submit" value="{{ lang.t('Go') }}" accesskey="g" />
+						</label>
+					</div>
+				</form>
+{% endif %}
+			</div>
+			<div class="conr">
+
+{% if footer_style == 'index' %}
+{% if config['o_feed_type'] == 1 %}				<p id="feedlinks"><span class="rss"><a href="extern.php?action=feed&amp;type=rss">{{ lang.t('RSS active topics feed') }}</a></span></p>
+{% elseif config['o_feed_type'] == 2 %}				<p id="feedlinks"><span class="atom"><a href="extern.php?action=feed&amp;type=atom">{{ lang.t('Atom active topics feed') }}</a></span></p>
+{% endif %}
+
+{% elseif footer_style == 'viewforum' %}
+{% if config['o_feed_type'] == 1 %}				<p id="feedlinks"><span class="rss"><a href="extern.php?action=feed&amp;fid={{ forum_id }}&amp;type=rss">{{ lang.t('RSS forum feed') }}</a></span></p>
+{% elseif config['o_feed_type'] == 2 %}				<p id="feedlinks"><span class="atom"><a href="extern.php?action=feed&amp;fid={{ forum_id }}&amp;type=atom">{{ lang.t('Atom forum feed') }}</a></span></p>
+{% endif %}
+
+{% elseif footer_style == 'viewtopic' %}
+{% if config['o_feed_type'] == 1 %}				<p id="feedlinks"><span class="rss"><a href="extern.php?action=feed&amp;tid={{ id }}&amp;type=rss">{{ lang.t('RSS topic feed') }}</a></span></p>
+{% elseif config['o_feed_type'] == 2 %}				<p id="feedlinks"><span class="atom"><a href="extern.php?action=feed&amp;tid={{ id }}&amp;type=atom">{{ lang.t('Atom topic feed') }}</a></span></p>
+{% endif %}
+
+{% endif %}
+				<p id="poweredby">{% set powered_by %}<a href="http://fluxbb.org/">FluxBB</a>{% if config['o_show_version'] == '1' %} {{ config['o_cur_version'] }}{% endif %}{% endset %}{{ lang.t('Powered by', powered_by)|raw }}</p>
+			</div>
+			<div class="clearer"></div>
+		</div>
+	</div>
+</div>
+
+{% if defined('PUN_DEBUG') %}<p id="debugtime">[{{ lang.t('Querytime', query_time, num_queries) }}{% if memory_usage is defined %} - {{ lang.t('Memory usage', memory_usage) }}{% endif %}{% if peak_usage is defined %} {{ lang.t('Peak usage', peak_usage) }}{% endif %}  ]</p>{% endif %}
 
 </div>
 <div class="end-box"><div><!-- Bottom corners --></div></div>
