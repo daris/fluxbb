@@ -82,7 +82,7 @@ if (isset($_POST['form_sent']) && $action == 'in')
 		$params = array(':group_id' => $pun_config['o_default_user_group'], ':id' => $cur_user['id']);
 		$query->run($params);
 		unset($query, $params);
-		
+
 		// Regenerate the users info cache
 		$cache->delete('boardstats');
 	}
@@ -117,20 +117,20 @@ else if ($action == 'out')
 	// Remove user from "users online" list
 	$query = $db->delete('online');
 	$query->where = 'user_id = :user_id';
-	
+
 	$params = array(':user_id' => $pun_user['id']);
-	
+
 	$query->run($params);
 	unset($query, $params);
-	
+
 	// Update last_visit (make sure there's something to update it with)
 	if (isset($pun_user['logged']))
 	{
 		$query = $db->update(array('last_visit' => ':last_visit'), 'users');
 		$query->where = 'id = :id';
-		
+
 		$params = array(':last_visit' => $pun_user['logged'], ':id' => $pun_user['id']);
-		
+
 		$query->run($params);
 		unset($query, $params);
 	}
@@ -163,14 +163,19 @@ else if ($action == 'forget' || $action == 'forget_2')
 		{
 			$query = $db->select(array('id' => 'u.id', 'username' => 'u.username', 'last_email_sent' => 'u.last_email_sent'), 'users AS u');
 			$query->where = 'u.email = :email';
-			
+
 			$params = array(':email' => $email);
-			
+
 			$result = $query->run($params);
 			unset($query, $params);
 
 			if (!empty($result))
 			{
+				require_once PUN_ROOT.'modules/utf8/php-utf8.php';
+				require_once PUN_ROOT.'modules/mailer/mailer.php';
+
+				$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+
 				// Load the "activate password" template
 				$mail_tpl = trim(file_get_contents(PUN_ROOT.'lang/'.$pun_user['language'].'/mail_templates/activate_password.tpl'));
 
@@ -192,12 +197,12 @@ else if ($action == 'forget' || $action == 'forget_2')
 					// Generate a new password and a new password activation code
 					$new_password = random_pass(8);
 					$new_password_key = random_pass(8);
-					
+
 					$query = $db->update(array('activate_string' => ':activate_string', 'activate_key' => ':activate_key', 'last_email_sent' => ':last_email_sent'), 'users');
 					$query->where = 'id = :id';
-					
+
 					$params = array(':activate_string' => pun_hash($new_password), ':activate_key' => $new_password_key, ':last_email_sent' => time(), ':id' => $cur_hit['id']);
-					
+
 					$query->run($params);
 					unset($params);
 
@@ -206,7 +211,8 @@ else if ($action == 'forget' || $action == 'forget_2')
 					$cur_mail_message = str_replace('<activation_url>', get_base_url().'/profile.php?id='.$cur_hit['id'].'&action=change_pass&key='.$new_password_key, $cur_mail_message);
 					$cur_mail_message = str_replace('<new_password>', $new_password, $cur_mail_message);
 
-					pun_mail($email, $mail_subject, $cur_mail_message);
+					// Send mail
+					$mailer->new_email($mail_subject, $cur_mail_message)->send($email);
 				}
 				unset($result);
 

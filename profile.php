@@ -269,7 +269,8 @@ else if ($action == 'change_email')
 		if (pun_hash($_POST['req_password']) !== $pun_user['password'])
 			message($lang->t('Wrong pass'));
 
-		require PUN_ROOT.'include/email.php';
+		require_once PUN_ROOT.'modules/utf8/php-utf8.php';
+		require_once PUN_ROOT.'modules/mailer/mailer.php';
 
 		// Validate the email address
 		$new_email = strtolower(trim($_POST['req_new_email']));
@@ -283,6 +284,10 @@ else if ($action == 'change_email')
 				message($lang->t('Banned email'));
 			else if ($pun_config['o_mailing_list'] != '')
 			{
+				// Load mailer if it's not already loaded
+				if (!isset($mailer))
+					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+
 				// Load the "banned email change" template
 				$mail_tpl = trim(file_get_contents(PUN_ROOT.'lang/'.$pun_user['language'].'/mail_templates/banned_email_change.tpl'));
 
@@ -296,7 +301,8 @@ else if ($action == 'change_email')
 				$mail_message = str_replace('<profile_url>', get_base_url().'/profile.php?id='.$id, $mail_message);
 				$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-				pun_mail($pun_config['o_mailing_list'], $mail_subject, $mail_message);
+				// Send mail
+				$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
 			}
 		}
 
@@ -330,7 +336,12 @@ else if ($action == 'change_email')
 				$mail_message = str_replace('<profile_url>', get_base_url().'/profile.php?id='.$id, $mail_message);
 				$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-				pun_mail($pun_config['o_mailing_list'], $mail_subject, $mail_message);
+				// Load mailer if it's not already loaded
+				if (!isset($mailer))
+					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+
+				// Send mail
+				$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
 			}
 		}
 		unset($query, $params, $result);
@@ -358,7 +369,12 @@ else if ($action == 'change_email')
 		$mail_message = str_replace('<activation_url>', get_base_url().'/profile.php?action=change_email&id='.$id.'&key='.$new_email_key, $mail_message);
 		$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-		pun_mail($new_email, $mail_subject, $mail_message);
+		// Load mailer if it's not already loaded
+		if (!isset($mailer))
+			$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+
+		// Send mail
+		$mailer->new_email($mail_subject, $mail_message)->send($new_email);
 
 		message($lang->t('Activate email sent').' <a href="mailto:'.$pun_config['o_admin_email'].'">'.$pun_config['o_admin_email'].'</a>.', true);
 	}

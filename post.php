@@ -286,7 +286,10 @@ if (isset($_POST['form_sent']))
 				$result = $query->run($params);
 				if (!empty($result))
 				{
-					require_once PUN_ROOT.'include/email.php';
+					require_once PUN_ROOT.'modules/utf8/php-utf8.php';
+					require PUN_ROOT.'modules/mailer/mailer.php';
+
+					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 					$notification_emails = array();
 
@@ -346,9 +349,9 @@ if (isset($_POST['form_sent']))
 						if (isset($notification_emails[$cur_subscriber['language']]))
 						{
 							if ($cur_subscriber['notify_with_post'] == '0')
-								pun_mail($cur_subscriber['email'], $notification_emails[$cur_subscriber['language']][0], $notification_emails[$cur_subscriber['language']][1]);
+								$mailer->new_email($notification_emails[$cur_subscriber['language']][0], $notification_emails[$cur_subscriber['language']][1])->send($cur_subscriber['email']);
 							else
-								pun_mail($cur_subscriber['email'], $notification_emails[$cur_subscriber['language']][2], $notification_emails[$cur_subscriber['language']][3]);
+								$mailer->new_email($notification_emails[$cur_subscriber['language']][2], $notification_emails[$cur_subscriber['language']][3])->send($cur_subscriber['email']);
 						}
 					}
 
@@ -432,7 +435,10 @@ if (isset($_POST['form_sent']))
 				$result = $query->run($params);
 				if (!empty($result))
 				{
-					require_once PUN_ROOT.'include/email.php';
+					require_once PUN_ROOT.'modules/utf8/php-utf8.php';
+					require PUN_ROOT.'modules/mailer/mailer.php';
+
+					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 					$notification_emails = array();
 
@@ -494,9 +500,9 @@ if (isset($_POST['form_sent']))
 						if (isset($notification_emails[$cur_subscriber['language']]))
 						{
 							if ($cur_subscriber['notify_with_post'] == '0')
-								pun_mail($cur_subscriber['email'], $notification_emails[$cur_subscriber['language']][0], $notification_emails[$cur_subscriber['language']][1]);
+								$mailer->new_email($notification_emails[$cur_subscriber['language']][0], $notification_emails[$cur_subscriber['language']][1])->send($cur_subscriber['email']);
 							else
-								pun_mail($cur_subscriber['email'], $notification_emails[$cur_subscriber['language']][2], $notification_emails[$cur_subscriber['language']][3]);
+								$mailer->new_email($notification_emails[$cur_subscriber['language']][2], $notification_emails[$cur_subscriber['language']][3])->send($cur_subscriber['email']);
 						}
 					}
 
@@ -510,6 +516,13 @@ if (isset($_POST['form_sent']))
 		// If we previously found out that the email was banned
 		if ($pun_user['is_guest'] && $banned_email && $pun_config['o_mailing_list'] != '')
 		{
+			require_once PUN_ROOT.'modules/utf8/php-utf8.php';
+			require_once PUN_ROOT.'modules/mailer/mailer.php';
+
+			// Load mailer if it's not already loaded
+			if (!isset($mailer))
+				$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+
 			// Load the "banned email post" template
 			$mail_tpl = trim(file_get_contents(PUN_ROOT.'lang/'.$pun_user['language'].'/mail_templates/banned_email_post.tpl'));
 
@@ -523,7 +536,8 @@ if (isset($_POST['form_sent']))
 			$mail_message = str_replace('<post_url>', get_base_url().'/viewtopic.php?pid='.$new_pid.'#p'.$new_pid, $mail_message);
 			$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-			pun_mail($pun_config['o_mailing_list'], $mail_subject, $mail_message);
+			// Send mail
+			$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
 		}
 
 		// If the posting user is logged in, increment his/her post count

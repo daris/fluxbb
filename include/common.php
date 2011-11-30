@@ -129,6 +129,24 @@ if ($pun_config === Cache::NOT_FOUND)
 	$cache->set('config', $pun_config);
 }
 
+// Setup mailer module configuration
+$flux_config['mail'] = array(
+	'type'		=> 'mail',
+	'from' 		=> $pun_config['o_webmaster_email'],
+);
+if (!empty($pun_config['o_smtp_host']))
+{
+	if (strpos($pun_config['o_smtp_host'], ':') !== false)
+		list($flux_config['mail']['host'], $flux_config['mail']['port']) = explode(':', $pun_config['o_smtp_host']);
+	else
+		$flux_config['mail']['host'] = $pun_config['o_smtp_host'];
+
+	$flux_config['mail']['type'] = 'smtp';
+	$flux_config['mail']['username'] = $pun_config['o_smtp_user'];
+	$flux_config['mail']['password'] = $pun_config['o_smtp_pass'];
+	$flux_config['mail']['ssl'] = $pun_config['o_smtp_ssl'];
+}
+
 // Verify that we are running the proper database schema revision
 /*if (!isset($pun_config['o_database_revision']) || $pun_config['o_database_revision'] < FORUM_DB_REVISION ||
 	!isset($pun_config['o_searchindex_revision']) || $pun_config['o_searchindex_revision'] < FORUM_SI_REVISION ||

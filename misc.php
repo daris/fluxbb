@@ -139,9 +139,17 @@ else if (isset($_GET['email']))
 		$mail_message = str_replace('<mail_message>', $message, $mail_message);
 		$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-		require_once PUN_ROOT.'include/email.php';
+		require_once PUN_ROOT.'modules/utf8/php-utf8.php';
+		require_once PUN_ROOT.'modules/mailer/mailer.php';
 
-		pun_mail($recipient['email'], $mail_subject, $mail_message, $pun_user['email'], $pun_user['username']);
+		// Load mailer if it's not already loaded
+		if (!isset($mailer))
+			$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+
+		// Send mail
+		$email = $mailer->new_email($mail_subject, $mail_message);
+		$email->set_reply_to($pun_user['username'].'<'.$pun_user['email'].'>');
+		$email->send($recipient['email']);
 
 		$query = $db->update(array('last_email_sent' => ':now'), 'users');
 		$query->where = 'id = :user_id';
@@ -288,9 +296,13 @@ else if (isset($_GET['report']))
 				$mail_message = str_replace('<reason>', $reason, $mail_message);
 				$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-				require PUN_ROOT.'include/email.php';
+				require_once PUN_ROOT.'modules/utf8/php-utf8.php';
+				require PUN_ROOT.'modules/mailer/mailer.php';
 
-				pun_mail($pun_config['o_mailing_list'], $mail_subject, $mail_message);
+				$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+
+				// Send mail
+				$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
 			}
 		}
 
