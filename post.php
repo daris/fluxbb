@@ -286,6 +286,7 @@ if (isset($_POST['form_sent']))
 				$result = $query->run($params);
 				if (!empty($result))
 				{
+					require PUN_ROOT.'include/email.php'; // Need this for bbcode2email function
 					require_once PUN_ROOT.'modules/utf8/php-utf8.php';
 					require PUN_ROOT.'modules/mailer/mailer.php';
 
@@ -435,6 +436,7 @@ if (isset($_POST['form_sent']))
 				$result = $query->run($params);
 				if (!empty($result))
 				{
+					require PUN_ROOT.'include/email.php'; // Need this for bbcode2email function
 					require_once PUN_ROOT.'modules/utf8/php-utf8.php';
 					require PUN_ROOT.'modules/mailer/mailer.php';
 

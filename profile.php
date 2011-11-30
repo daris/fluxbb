@@ -269,6 +269,7 @@ else if ($action == 'change_email')
 		if (pun_hash($_POST['req_password']) !== $pun_user['password'])
 			message($lang->t('Wrong pass'));
 
+		require PUN_ROOT.'include/email.php'; // Need this for is_valid_email function
 		require_once PUN_ROOT.'modules/utf8/php-utf8.php';
 		require_once PUN_ROOT.'modules/mailer/mailer.php';
 
