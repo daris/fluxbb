@@ -198,7 +198,7 @@ if (isset($_POST['form_sent']))
 				$mail_message = str_replace('<profile_url>', get_base_url().'/profile.php?id='.$new_uid, $mail_message);
 				$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-				// Load mailer if it's not already loaded
+				// Load mailer if it has not been loaded yet
 				if (!isset($mailer))
 					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
@@ -222,7 +222,7 @@ if (isset($_POST['form_sent']))
 				$mail_message = str_replace('<profile_url>', get_base_url().'/profile.php?id='.$new_uid, $mail_message);
 				$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-				// Load mailer if it's not already loaded
+				// Load mailer if it has not been loaded yet
 				if (!isset($mailer))
 					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
@@ -246,7 +246,7 @@ if (isset($_POST['form_sent']))
 				$mail_message = str_replace('<profile_url>', get_base_url().'/profile.php?id='.$new_uid, $mail_message);
 				$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-				// Load mailer if it's not already loaded
+				// Load mailer if it has not been loaded yet
 				if (!isset($mailer))
 					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
@@ -276,7 +276,7 @@ if (isset($_POST['form_sent']))
 			$mail_message = str_replace('<login_url>', get_base_url().'/login.php', $mail_message);
 			$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-			// Load mailer if it's not already loaded
+			// Load mailer if it has not been loaded yet
 			if (!isset($mailer))
 				$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 

@@ -142,7 +142,7 @@ else if (isset($_GET['email']))
 		require_once PUN_ROOT.'modules/utf8/php-utf8.php';
 		require_once PUN_ROOT.'modules/mailer/mailer.php';
 
-		// Load mailer if it's not already loaded
+		// Load mailer if it has not been loaded yet
 		if (!isset($mailer))
 			$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 

@@ -285,7 +285,7 @@ else if ($action == 'change_email')
 				message($lang->t('Banned email'));
 			else if ($pun_config['o_mailing_list'] != '')
 			{
-				// Load mailer if it's not already loaded
+				// Load mailer if it has not been loaded yet
 				if (!isset($mailer))
 					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
@@ -337,7 +337,7 @@ else if ($action == 'change_email')
 				$mail_message = str_replace('<profile_url>', get_base_url().'/profile.php?id='.$id, $mail_message);
 				$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-				// Load mailer if it's not already loaded
+				// Load mailer if it has not been loaded yet
 				if (!isset($mailer))
 					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
@@ -370,7 +370,7 @@ else if ($action == 'change_email')
 		$mail_message = str_replace('<activation_url>', get_base_url().'/profile.php?action=change_email&id='.$id.'&key='.$new_email_key, $mail_message);
 		$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-		// Load mailer if it's not already loaded
+		// Load mailer if it has not been loaded yet
 		if (!isset($mailer))
 			$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
