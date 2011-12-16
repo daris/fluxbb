@@ -100,10 +100,10 @@ if (defined('PUN_ADMIN_CONSOLE'))
 // by footer if there are no CODE tags with highlighting.
 if (defined('PUN_PARSER'))
 {
-	if (isset($pd['config']['syntax_style']) &&
-			file_exists(PUN_ROOT .'bin/'. $pd['config']['syntax_style'])) {
+	if (isset($parser) && isset($parser->pd['config']['syntax_style']) &&
+			file_exists(PUN_ROOT .'bin/'. $parser->pd['config']['syntax_style'])) {
 		echo('<link rel="stylesheet" type="text/css" href="bin/'.
-			$pd['config']['syntax_style'] ."\" />\n");
+			$parser->pd['config']['syntax_style'] ."\" />\n");
 	}
 }
 

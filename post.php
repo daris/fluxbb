@@ -151,14 +151,15 @@ if (isset($_POST['form_sent']))
 	// Validate BBCode syntax
 	if ($pun_config['p_message_bbcode'] == '1')
 	{
-		require PUN_ROOT.'include/parser.php';
-		$message = preparse_bbcode($message, $errors);
+		require PUN_ROOT.'modules/parser/src/Parser.php';
+		$parser = new Flux_Parser();
+		$message = $parser->preparse_bbcode($message, $errors);
 
 /************ BEGIN DEBUG OUTPUT CODE ***************/
-if (defined('DBUG')) {       // perform benchmarking of parse_message()
-	$bd = benchmark_12('preparse_bbcode', $message, .33, FALSE, $errors); // Speed check.
-	$message .= '[dbug="from post.php"]'. $bd['msg'] .'[/dbug]';
-}
+//if (defined('DBUG')) {       // perform benchmarking of parse_message()
+//	$bd = benchmark_12('preparse_bbcode', $message, .33, FALSE, $errors); // Speed check.
+//	$message .= '[dbug="from post.php"]'. $bd['msg'] .'[/dbug]';
+//}
 /************ END DEBUG OUTPUT CODE ***************/
 
 	}
@@ -681,14 +682,15 @@ if (isset($_POST['preview']))
 //else if (isset($_POST['preview']))
 
 {
-	require_once PUN_ROOT.'include/parser.php';
-	$preview_message = parse_message($message, $hide_smilies);
+	require_once PUN_ROOT.'modules/parser/src/Parser.php';
+	$parser = new Flux_Parser();
+	$preview_message = $parser->parse_message($message, $hide_smilies);
 
 /************ BEGIN DEBUG OUTPUT CODE ***************/
-if (defined('DBUG')) {       // perform benchmarking of parse_message()
-	$bd = benchmark_12('parse_message', $message, .33, FALSE, $hide_smilies); // Speed check.
-	$preview_message .= '<p class="debug" title="from post.php">'. $bd['msg'] .'</p>';
-}
+//if (defined('DBUG')) {       // perform benchmarking of parse_message()
+//	$bd = benchmark_12('parse_message', $message, .33, FALSE, $hide_smilies); // Speed check.
+//	$preview_message .= '<p class="debug" title="from post.php">'. $bd['msg'] .'</p>';
+//}
 /************ END DEBUG OUTPUT CODE ***************/
 if (count($errors) > 0) $message =& $orig_message;
 
@@ -812,7 +814,8 @@ if (!empty($checkboxes))
 // Check to see if the topic review is to be displayed
 if ($tid && $pun_config['o_topic_review'] != '0')
 {
-	require_once PUN_ROOT.'include/parser.php';
+	require_once PUN_ROOT.'modules/parser/src/Parser.php';
+	$parser = new Flux_Parser();
 
 ?>
 
@@ -836,7 +839,7 @@ if ($tid && $pun_config['o_topic_review'] != '0')
 	{
 		$post_count++;
 
-		$cur_post['message'] = parse_message($cur_post['message'], $cur_post['hide_smilies']);
+		$cur_post['message'] = $parser->parse_message($cur_post['message'], $cur_post['hide_smilies']);
 
 ?>
 	<div class="blockpost">

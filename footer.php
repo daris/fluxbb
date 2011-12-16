@@ -182,17 +182,21 @@ else if ($footer_style == 'viewtopic')
 </div>
 <?php
 // Code to implement CODE syntax highlighting through Javascript.
-if (defined('PUN_PARSER'))
+if (defined('PUN_PARSER') && isset($parser))
 {
-	if (isset($pd['code_scripts'])) {	// Check if any CODE tags have highlighting?
-		foreach($pd['code_scripts'] as $script) {	// Yes. Add the scripts at bottom of page.
+	if (isset($parser->pd['code_scripts']))
+	{	// Check if any CODE tags have highlighting?
+		foreach($parser->pd['code_scripts'] as $script)
+		{	// Yes. Add the scripts at bottom of page.
 			echo '<script type="text/javascript" src="bin/'. $script .'"></script>'."\n";
 		}
-	} elseif (isset($pd['config']['syntax_style']) &&
+	}
+	elseif (isset($parser->pd['config']['syntax_style']) &&
 		// If there are no CODe tags calling for syntax highlighting,
-		file_exists(PUN_ROOT .'bin/'. $pd['config']['syntax_style'])) { // No SH tags.
+		file_exists(PUN_ROOT .'bin/'. $parser->pd['config']['syntax_style']))
+	{ // No SH tags.
 		$tpl_main = str_replace(										// Remove unneeded CSS sheet.
-			'<link rel="stylesheet" type="text/css" href="bin/'. $pd['config']['syntax_style'] ."\" />\n",
+			'<link rel="stylesheet" type="text/css" href="bin/'. $parser->pd['config']['syntax_style'] ."\" />\n",
 			'',
 			$tpl_main);
 	}

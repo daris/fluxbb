@@ -23,15 +23,19 @@ $lang->load('admin_parser');
 // This is where the parser data lives and breathes.
 $cache_file = PUN_ROOT.'cache/cache_parser_data.php';
 
+$pd = $cache->get('parser_data');
+
 // If RESET button pushed, or no cache file, re-compile master bbcode source file.
-if (isset($_POST['reset']) || !file_exists($cache_file)) {
-	require_once(PUN_ROOT.'include/bbcd_source.php');
-	require_once(PUN_ROOT.'include/bbcd_compile.php');
+if (isset($_POST['reset']) || $pd === Flux_Cache::NOT_FOUND)
+{
+	require_once (PUN_ROOT.'include/bbcd_source.php');
+	require_once (PUN_ROOT.'include/bbcd_compile.php');
+	$cache->set('parser_data', $pd);
+
 	redirect('admin_parser.php', $lang->t('reset_success'));
 }
 
 // Load the current BBCode $pd array from include/parser_data.inc.php.
-require_once($cache_file);			// Fetch $pd compiled global regex data.
 $bbcd = $pd['bbcd'];				// Local scratch copy of $bbcd.
 $smilies = $pd['smilies'];			// Local scratch copy of $smilies.
 $config = $pd['config'];			// Local scratch copy of $config.
@@ -43,132 +47,188 @@ if (isset($_POST['form_sent']))
 	confirm_referrer('admin_parser.php');
 
 	// Upload new smiley image to img/smilies
-	if (isset($_POST['upload']) && isset($_FILES['new_smiley']) && isset($_FILES['new_smiley']['error'])) {
-		$f =& $_FILES['new_smiley'];
-		switch($f['error']) {
-		case 0: // 0: Successful upload.
-			$name = str_replace(' ', '_', $f['name']);			// Convert spaces to underscoree.
-			$name = preg_replace('/[^\w\-.]/S', '', $name);		// Weed out all unsavory filename chars.
-			if (preg_match('/^[\w\-.]++$/', $name)) {			// If we have a valid filename?
-				if (preg_match('%^image/%', $f['type'])) {		// If we have an image file type?
-					if ($f['size'] > 0 && $f['size'] <= $pun_config['o_avatars_size']) {
-						if (move_uploaded_file($f['tmp_name'], PUN_ROOT .'img/smilies/'. $name)) {
-							redirect('admin_parser.php', $lang->t('upload success'));
-						} else
-						{ //  Error #1: 'Smiley upload failed. Unable to move to smiley folder.'.
-							message($lang->t('upload_err_1'));
+	if (isset($_POST['upload']) && isset($_FILES['new_smiley']) && isset($_FILES['new_smiley']['error']))
+	{
+		$f = &$_FILES['new_smiley'];
+		switch ($f['error'])
+		{
+			case 0: // 0: Successful upload.
+				$name = str_replace(' ', '_', $f['name']); // Convert spaces to underscoree.
+				$name = preg_replace('/[^\w\-.]/S', '', $name); // Weed out all unsavory filename chars.
+				if (preg_match('/^[\w\-.]++$/', $name))
+				{ // If we have a valid filename?
+					if (preg_match('%^image/%', $f['type']))
+					{ // If we have an image file type?
+						if ($f['size'] > 0 && $f['size'] <= $pun_config['o_avatars_size'])
+						{
+							if (move_uploaded_file($f['tmp_name'], PUN_ROOT.'img/smilies/'.$name))
+							{
+								redirect('admin_parser.php', $lang->t('upload success'));
+							}
+							else
+							{ //  Error #1: 'Smiley upload failed. Unable to move to smiley folder.'.
+								message($lang->t('upload_err_1'));
+							}
 						}
-					} else
-					{ // Error #2: 'Smiley upload failed. File is too big.'
-						message($lang->t('upload_err_2'));
+						else
+						{ // Error #2: 'Smiley upload failed. File is too big.'
+							message($lang->t('upload_err_2'));
+						}
 					}
-				} else
-				{ // Error #3: 'Smiley upload failed. File type is not an image.'.
-					message($lang->t('upload_err_3'));
+					else
+					{ // Error #3: 'Smiley upload failed. File type is not an image.'.
+						message($lang->t('upload_err_3'));
+					}
 				}
-			} else
-			{ // Error #4: 'Smiley upload failed. Bad filename.'
-				message($lang->t('upload_err_4'));
-			}
-			break;
-		case 1: // case 1 similar to case 2 so fall through...
-		case 2: message($lang->t('upload_err_2'));	// File exceeds MAX_FILE_SIZE.
-		case 3: message($lang->t('upload_err_5'));	// File only partially uploaded.
-//		case 4: break; // No error. Normal response when this form element left empty
-		case 4: message($lang->t('upload_err_6'));	// No filename.
-		case 6: message($lang->t('upload_err_7'));	// No temp folder.
-		case 7: message($lang->t('upload_err_8'));	// Cannot write to disk.
-		default: message($lang->t('upload_err_9'));		// Generic/unknown error
+				else
+				{ // Error #4: 'Smiley upload failed. Bad filename.'
+					message($lang->t('upload_err_4'));
+				}
+				break;
+			case 1: // case 1 similar to case 2 so fall through...
+			case 2:
+				message($lang->t('upload_err_2')); // File exceeds MAX_FILE_SIZE.
+			case 3:
+				message($lang->t('upload_err_5')); // File only partially uploaded.
+				//		case 4: break; // No error. Normal response when this form element left empty
+			case 4:
+				message($lang->t('upload_err_6')); // No filename.
+			case 6:
+				message($lang->t('upload_err_7')); // No temp folder.
+			case 7:
+				message($lang->t('upload_err_8')); // Cannot write to disk.
+			default:
+				message($lang->t('upload_err_9')); // Generic/unknown error
 		}
 	}
 
 	// Set new $config values:
-	if (isset($_POST['config'])) {
-		$pcfg =& $_POST['config'];
+	if (isset($_POST['config']))
+	{
+		$pcfg = &$_POST['config'];
 
-		if (isset($pcfg['textile'])) {
-			if ($pcfg['textile'] == '1')	$config['textile'] = TRUE;
-			else							$config['textile'] = FALSE;
+		if (isset($pcfg['textile']))
+		{
+			if ($pcfg['textile'] == '1')
+				$config['textile'] = true;
+			else
+				$config['textile'] = false;
 		}
-		if (isset($pcfg['quote_links'])) {
-			if ($pcfg['quote_links'] == '1')	$config['quote_links'] = TRUE;
-			else							$config['quote_links'] = FALSE;
+		if (isset($pcfg['quote_links']))
+		{
+			if ($pcfg['quote_links'] == '1')
+				$config['quote_links'] = true;
+			else
+				$config['quote_links'] = false;
 		}
-		if (isset($pcfg['quote_imgs'])) {
-			if ($pcfg['quote_imgs'] == '1')	$config['quote_imgs'] = TRUE;
-			else							$config['quote_imgs'] = FALSE;
+		if (isset($pcfg['quote_imgs']))
+		{
+			if ($pcfg['quote_imgs'] == '1')
+				$config['quote_imgs'] = true;
+			else
+				$config['quote_imgs'] = false;
 		}
-		if (isset($pcfg['valid_imgs'])) {
-			if ($pcfg['valid_imgs'] == '1') $config['valid_imgs'] = TRUE;
-			else							$config['valid_imgs'] = FALSE;
+		if (isset($pcfg['valid_imgs']))
+		{
+			if ($pcfg['valid_imgs'] == '1')
+				$config['valid_imgs'] = true;
+			else
+				$config['valid_imgs'] = false;
 		}
-		if (isset($pcfg['click_imgs'])) {
-			if ($pcfg['click_imgs'] == '1') $config['click_imgs'] = TRUE;
-			else							$config['click_imgs'] = FALSE;
+		if (isset($pcfg['click_imgs']))
+		{
+			if ($pcfg['click_imgs'] == '1')
+				$config['click_imgs'] = true;
+			else
+				$config['click_imgs'] = false;
 		}
-		if (isset($pcfg['syntax_style']) &&
-				file_exists(PUN_ROOT .'bin/'. $pcfg['syntax_style'])) {
+		if (isset($pcfg['syntax_style']) && file_exists(PUN_ROOT.'bin/'.$pcfg['syntax_style']))
+		{
 			$config['syntax_style'] = $pcfg['syntax_style'];
 		}
-		if (isset($pcfg['max_size']) && preg_match('/^\d++$/', $pcfg['max_size'])) {
+		if (isset($pcfg['max_size']) && preg_match('/^\d++$/', $pcfg['max_size']))
+		{
 			$config['max_size'] = (int)$pcfg['max_size'];
 		}
-		if (isset($pcfg['max_width']) && preg_match('/^\d++$/', $pcfg['max_width'])) {
+		if (isset($pcfg['max_width']) && preg_match('/^\d++$/', $pcfg['max_width']))
+		{
 			$config['max_width'] = (int)$pcfg['max_width']; // Limit default to maximum.
-			if ($config['def_width'] > $config['max_width']) $config['def_width'] = $config['max_width'];
+			if ($config['def_width'] > $config['max_width'])
+				$config['def_width'] = $config['max_width'];
 		}
-		if (isset($pcfg['max_height']) && preg_match('/^\d++$/', $pcfg['max_height'])) {
+		if (isset($pcfg['max_height']) && preg_match('/^\d++$/', $pcfg['max_height']))
+		{
 			$config['max_height'] = (int)$pcfg['max_height']; // Limit default to maximum.
-			if ($config['def_height'] > $config['max_height']) $config['def_height'] = $config['max_height'];
+			if ($config['def_height'] > $config['max_height'])
+				$config['def_height'] = $config['max_height'];
 		}
-		if (isset($pcfg['def_width']) && preg_match('/^\d++$/', $pcfg['def_width'])) {
+		if (isset($pcfg['def_width']) && preg_match('/^\d++$/', $pcfg['def_width']))
+		{
 			$config['def_width'] = (int)$pcfg['def_width']; // Limit default to maximum.
-			if ($config['def_width'] > $config['max_width']) $config['def_width'] = $config['max_width'];
+			if ($config['def_width'] > $config['max_width'])
+				$config['def_width'] = $config['max_width'];
 		}
-		if (isset($pcfg['def_height']) && preg_match('/^\d++$/', $pcfg['def_height'])) {
+		if (isset($pcfg['def_height']) && preg_match('/^\d++$/', $pcfg['def_height']))
+		{
 			$config['def_height'] = (int)$pcfg['def_height']; // Limit default to maximum.
-			if ($config['def_height'] > $config['max_height']) $config['def_height'] = $config['max_height'];
+			if ($config['def_height'] > $config['max_height'])
+				$config['def_height'] = $config['max_height'];
 		}
-		if (isset($pcfg['smiley_size']) && preg_match('/^\s*+(\d++)\s*+%?+\s*+$/', $pcfg['smiley_size'], $m)) {
+		if (isset($pcfg['smiley_size']) && preg_match('/^\s*+(\d++)\s*+%?+\s*+$/', $pcfg['smiley_size'], $m))
+		{
 			$config['smiley_size'] = (int)$m[1]; // Limit default to maximum.
 		}
 	}
 	// Set new $bbcd values:
-	foreach($bbcd as $tagname => $tagdata) {
-		if ($tagname == '_ROOT_') continue; // Skip last pseudo-tag
-		$tag =& $bbcd[$tagname];
-		if(isset($_POST[$tagname.'_in_post'])) {
-			if  ($_POST[$tagname.'_in_post'] == '1')	$tag['in_post']	= TRUE;
-			else										$tag['in_post']	= FALSE;
+	foreach ($bbcd as $tagname => $tagdata)
+	{
+		if ($tagname == '_ROOT_')
+			continue; // Skip last pseudo-tag
+		$tag = &$bbcd[$tagname];
+		if (isset($_POST[$tagname.'_in_post']))
+		{
+			if ($_POST[$tagname.'_in_post'] == '1')
+				$tag['in_post'] = true;
+			else
+				$tag['in_post'] = false;
 		}
-		if(isset($_POST[$tagname.'_in_sig'])) {
-			if  ($_POST[$tagname.'_in_sig'] == '1')		$tag['in_sig']	= TRUE;
-			else										$tag['in_sig']	= FALSE;
+		if (isset($_POST[$tagname.'_in_sig']))
+		{
+			if ($_POST[$tagname.'_in_sig'] == '1')
+				$tag['in_sig'] = true;
+			else
+				$tag['in_sig'] = false;
 		}
-		if(isset($_POST[$tagname.'_depth_max']) && preg_match('/^\d++$/', $_POST[$tagname.'_depth_max'])) {
+		if (isset($_POST[$tagname.'_depth_max']) && preg_match('/^\d++$/', $_POST[$tagname.'_depth_max']))
+		{
 			$tag['depth_max'] = (int)$_POST[$tagname.'_depth_max'];
 		}
 	}
 	// Set new $smilies values:
-	if (isset($_POST['smiley_text']) && is_array($_POST['smiley_text']) &&
-		isset($_POST['smiley_file']) && is_array($_POST['smiley_file']) &&
-		count($_POST['smiley_text']) === count($_POST['smiley_file'])) {
-		$stext =& $_POST['smiley_text'];
-		$sfile =& $_POST['smiley_file'];
+	if (isset($_POST['smiley_text']) && is_array($_POST['smiley_text']) && isset($_POST['smiley_file']) && is_array($_POST['smiley_file']) && count($_POST['smiley_text'])
+		=== count($_POST['smiley_file']))
+	{
+		$stext = &$_POST['smiley_text'];
+		$sfile = &$_POST['smiley_file'];
 		$len = count($stext);
 		$good = '';
 		$smilies = array();
-		for ($i = 0; $i < $len; ++$i) { // Loop through all posted smileys.
-			if ($stext[$i] && $sfile !== 'select new file') {
+		for ($i = 0; $i < $len; ++$i)
+		{ // Loop through all posted smileys.
+			if ($stext[$i] && $sfile !== 'select new file')
+			{
 				$smilies[$stext[$i]] = array('file' => $sfile[$i]);
 //				message(sprintf("New smiley: \"%s\" = %s\n", $stext[$i], $sfile[$i]));
 			}
 		}
 	}
 
-	require_once("include/bbcd_compile.php"); // Compile $bbcd and save into $pd['bbcd']
+	require_once (PUN_ROOT.'include/bbcd_compile.php'); // Compile $bbcd and save into $pd['bbcd']
+	$cache->set('parser_data', $pd);
+
 	redirect('admin_parser.php', $lang->t('save_success'));
 }
+
 
 $page_title = array(pun_htmlspecialchars($pun_config['o_board_title']), $lang->t('Admin'), $lang->t('Parser'));
 define('PUN_ACTIVE_PAGE', 'admin');
@@ -201,10 +261,14 @@ generate_admin_menu('parser');
 	$oldfile = $config['syntax_style'];
 ?>
 <?php
-		foreach($shcss_files as $file) {
-			if ($file === $oldfile) {
+		foreach($shcss_files as $file)
+		{
+			if ($file === $oldfile)
+			{
 				echo("\t\t\t\t\t\t\t\t\t\t\t<option selected=\"selected\">" . $file . "</option>\n");
-			} else {
+			}
+			else
+			{
 				echo("\t\t\t\t\t\t\t\t\t\t\t<option>" . $file . "</option>\n");
 			}
 		}
@@ -323,7 +387,8 @@ generate_admin_menu('parser');
 <?php
 	$smiley_files = get_smiley_files();
 	$i = -1;
-	foreach($smilies as $key => $value) {
+	foreach($smilies as $key => $value)
+	{
 		$i++;
 		$oldfile = $value['file'];
 ?>
@@ -332,12 +397,12 @@ generate_admin_menu('parser');
 									<td>
 										<select name="smiley_file[<?php echo($i); ?>]">
 <?php
-		foreach($smiley_files as $file) {
-			if ($file === $oldfile) {
+		foreach($smiley_files as $file)
+		{
+			if ($file === $oldfile)
 				echo("\t\t\t\t\t\t\t\t\t\t\t<option selected=\"selected\">" . $file . "</option>\n");
-			} else {
+			else
 				echo("\t\t\t\t\t\t\t\t\t\t\t<option>" . $file . "</option>\n");
-			}
 		}
 ?>
 										</select>
@@ -355,9 +420,8 @@ generate_admin_menu('parser');
 										<select name="smiley_file[<?php echo($i); ?>]">
 											<option selected="selected">select new file</option>
 <?php
-		foreach($smiley_files as $file) {
+		foreach($smiley_files as $file)
 			echo("\t\t\t\t\t\t\t\t\t\t\t<option>" . $file . "</option>\n");
-		}
 ?>
 										</select><br />New smiley image
 									</td>
@@ -399,7 +463,8 @@ generate_admin_menu('parser');
 							</thead>
 							<tbody>
 <?php
-foreach($bbcd as $tagname => $tagdata) {
+foreach($bbcd as $tagname => $tagdata)
+{
 	if ($tagname == '_ROOT_') continue; // Skip last pseudo-tag
 	$title = $lang->t('Tag summary '.$tagname);
 
@@ -449,10 +514,12 @@ foreach($bbcd as $tagname => $tagdata) {
 
 // Helper function returns array of smiley image files
 //   stored in the img/smilies directory.
-function get_smiley_files() {
+function get_smiley_files()
+{
 	$imgfiles = array();
 	$filelist = scandir(PUN_ROOT.'img/smilies');
-	foreach($filelist as $file) {
+	foreach($filelist as $file)
+	{
 		if (preg_match('/\.(?:png|gif|jpe?g)$/', $file))
 			$imgfiles[] = $file;
 	}
@@ -461,10 +528,12 @@ function get_smiley_files() {
 
 // Helper function returns array of syntax highlighter CSS files
 //   stored in the img/smilies directory.
-function get_shcss() {
+function get_shcss()
+{
 	$cssfiles = array();
 	$filelist = scandir(PUN_ROOT.'bin');
-	foreach($filelist as $file) {
+	foreach($filelist as $file)
+	{
 		if (preg_match('/^sh(.*)\.css$/i', $file)) $cssfiles[] = $file;
 	}
 	return $cssfiles;

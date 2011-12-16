@@ -417,15 +417,15 @@ function file2title($file) {
 }
 
 // Output the $pd global data array to the cache file. Convert to string first.
-$s = "<?php // File: cache_parser_data.php. Automatically generated: " . date('Y-m-d h:i:s') . ". DO NOT EDIT!!!\n";
-
-$s .= sprintf("\$pd = array( // count == %d\n", count($pd));
-print_array($pd);
-$s .= ");\n";
-
-$s .= "?>";
-file_put_contents(PUN_ROOT.'cache/cache_parser_data.php', $s);
-
+//$s = "<?php // File: cache_parser_data.php. Automatically generated: " . date('Y-m-d h:i:s') . ". DO NOT EDIT!!!\n";
+//
+//$s .= sprintf("\$pd = array( // count == %d\n", count($pd));
+//print_array($pd);
+//$s .= ");\n";
+//
+//$s .= "? >";
+//file_put_contents(PUN_ROOT.'cache/cache_parser_data.php', $s);
+//
 // Clean up our global variables.
 unset($all_tags); unset($all_block_tags);
 unset($bbcd); unset($format_str); unset($handler); unset($key); unset($s);

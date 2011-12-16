@@ -1707,6 +1707,6 @@ html, body, .pun {
 	padding: .5em;
 }
 .pun .err {
-	color: #FFF;
+/*	color: #FFF;*/
 	background-color: #A00;
 }

@@ -215,8 +215,12 @@ else if ($pun_config['o_feed_type'] == '2')
 $page_title = array(pun_htmlspecialchars($pun_config['o_board_title']), pun_htmlspecialchars($cur_topic['forum_name']), pun_htmlspecialchars($cur_topic['subject']));
 define('PUN_ALLOW_INDEX', 1);
 define('PUN_ACTIVE_PAGE', 'index');
-require PUN_ROOT.'include/parser.php';
+
+require PUN_ROOT.'modules/parser/src/Parser.php';
+$parser = new Flux_Parser();
+
 require PUN_ROOT.'header.php';
+
 
 ?>
 <div class="linkst">
@@ -390,7 +394,7 @@ foreach ($result as $cur_post)
 	}
 
 	// Perform the main parsing of the message (BBCode, smilies, censor words etc)
-	$cur_post['message'] = parse_message($cur_post['message'], $cur_post['hide_smilies']);
+	$cur_post['message'] = $parser->parse_message($cur_post['message'], $cur_post['hide_smilies']);
 
 	// Do signature parsing/caching
 	if ($pun_config['o_signatures'] == '1' && $cur_post['signature'] != '' && $pun_user['show_sig'] != '0')
@@ -399,7 +403,7 @@ foreach ($result as $cur_post)
 			$signature = $signature_cache[$cur_post['poster_id']];
 		else
 		{
-			$signature = parse_signature($cur_post['signature']);
+			$signature = $parser->parse_signature($cur_post['signature']);
 			$signature_cache[$cur_post['poster_id']] = $signature;
 		}
 	}

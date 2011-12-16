@@ -99,8 +99,9 @@ if (isset($_POST['form_sent']))
 	// Validate BBCode syntax
 	if ($pun_config['p_message_bbcode'] == '1')
 	{
-		require PUN_ROOT.'include/parser.php';
-		$message = preparse_bbcode($message, $errors);
+		require_once PUN_ROOT.'modules/parser/src/Parser.php';
+		$parser = new Flux_Parser();
+		$message = $parser->preparse_bbcode($message, $errors);
 	}
 
 	if (empty($errors))
@@ -216,8 +217,10 @@ if (!empty($errors))
 }
 if (isset($_POST['preview']))
 {
-	require_once PUN_ROOT.'include/parser.php';
-	$preview_message = parse_message($message, $hide_smilies);
+	require_once PUN_ROOT.'modules/parser/src/Parser.php';
+	$parser = new Flux_Parser();
+
+	$preview_message = $parser->parse_message($message, $hide_smilies);
 	if (!empty($errors)) $message =& $orig_message;
 
 ?>
