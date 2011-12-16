@@ -1,5 +1,5 @@
 <?php
-
+//define('DBUG', 'on');       // perform benchmarking of parse_message()
 /**
  * Copyright (C) 2008-2011 FluxBB
  * based on code by Rickard Andersson copyright (C) 2002-2008 PunBB
@@ -153,6 +153,14 @@ if (isset($_POST['form_sent']))
 	{
 		require PUN_ROOT.'include/parser.php';
 		$message = preparse_bbcode($message, $errors);
+
+/************ BEGIN DEBUG OUTPUT CODE ***************/
+if (defined('DBUG')) {       // perform benchmarking of parse_message()
+	$bd = benchmark_12('preparse_bbcode', $message, .33, FALSE, $errors); // Speed check.
+	$message .= '[dbug="from post.php"]'. $bd['msg'] .'[/dbug]';
+}
+/************ END DEBUG OUTPUT CODE ***************/
+
 	}
 
 	if (empty($errors))
@@ -582,62 +590,24 @@ if ($tid)
 		$cur_quote = $result[0];
 		unset ($result, $query, $params);
 
-		// If the message contains a code tag we have to split it up (text within [code][/code] shouldn't be touched)
-		if (strpos($cur_quote['message'], '[code]') !== false && strpos($cur_quote['message'], '[/code]') !== false)
-		{
-			list($inside, $outside) = split_text($cur_quote['message'], '[code]', '[/code]');
-
-			$cur_quote['message'] = implode("\1", $outside);
-		}
-
-		// Remove [img] tags from quoted message
-		$cur_quote['message'] = preg_replace('%\[img(?:=(?:[^\[]*?))?\]((ht|f)tps?://)([^\s<"]*?)\[/img\]%U', '\1\3', $cur_quote['message']);
-
-		// If we split up the message before we have to concatenate it together again (code tags)
-		if (isset($inside))
-		{
-			$outside = explode("\1", $cur_quote['message']);
-			$cur_quote['message'] = '';
-
-			$num_tokens = count($outside);
-			for ($i = 0; $i < $num_tokens; ++$i)
-			{
-				$cur_quote['message'] .= $outside[$i];
-				if (isset($inside[$i]))
-					$cur_quote['message'] .= '[code]'.$inside[$i].'[/code]';
-			}
-
-			unset($inside);
-		}
-
-		if ($pun_config['o_censoring'] == '1')
-			$cur_quote['message'] = censor_words($cur_quote['message']);
-
 		$cur_quote['message'] = pun_htmlspecialchars($cur_quote['message']);
 
 		if ($pun_config['p_message_bbcode'] == '1')
-		{
-			// If username contains a square bracket, we add "" or '' around it (so we know when it starts and ends)
-			if (strpos($cur_quote['poster'], '[') !== false || strpos($cur_quote['poster'], ']') !== false)
-			{
-				if (strpos($cur_quote['poster'], '\'') !== false)
-					$cur_quote['poster'] = '"'.$cur_quote['poster'].'"';
-				else
-					$cur_quote['poster'] = '\''.$cur_quote['poster'].'\'';
-			}
-			else
-			{
-				// Get the characters at the start and end of $cur_quote['poster']
-				$ends = substr($cur_quote['poster'], 0, 1).substr($cur_quote['poster'], -1, 1);
-
-				// Deal with quoting "Username" or 'Username' (becomes '"Username"' or "'Username'")
-				if ($ends == '\'\'')
-					$cur_quote['poster'] = '"'.$cur_quote['poster'].'"';
-				else if ($ends == '""')
-					$cur_quote['poster'] = '\''.$cur_quote['poster'].'\'';
-			}
-
-			$quote = '[quote='.$cur_quote['poster'].']'.$cur_quote['message'].'[/quote]'."\n";
+ 		{	// Sanitize username for inclusion within QUOTE BBCode attribute.
+ 			//   This is a bit tricky because a username can have any "special"
+ 			//   characters such as backslash \ square brackets [] and quotes '".
+ 			if (preg_match('/[[\]\'"]/S', $q_poster)) // Check if we need to quote it.
+ 			{ // Post has special chars. Escape escapes and quotes then wrap in quotes.
+ 				if (strpos($q_poster, '"') !== false && strpos($q_poster, '\'') === false)
+ 				{ // If there are double quotes but no single quotes, use single quotes,
+ 					$q_poster = pun_htmlspecialchars(str_replace('\\', '\\\\', $q_poster));
+ 					$q_poster = '\''. $q_poster .'#'. $qid .'\'';
+ 				} else { // otherwise use double quotes.
+ 					$q_poster = pun_htmlspecialchars(str_replace(array('\\', '"'), array('\\\\', '\\"'), $q_poster));
+ 					$q_poster = '"'. $q_poster .'#'. $qid .'"';
+ 				}
+ 			} else $q_poster = $q_poster .'#'. $qid;
+ 			$quote = '[quote='. $q_poster .']'.$q_message.'[/quote]'."\n";
 		}
 		else
 			$quote = '> '.$cur_quote['poster'].' '.$lang->t('wrote')."\n\n".'> '.$cur_quote['message']."\n";
@@ -696,7 +666,7 @@ if (!empty($errors))
 <?php
 
 	foreach ($errors as $cur_error)
-		echo "\t\t\t\t".'<li><strong>'.$cur_error.'</strong></li>'."\n";
+		echo "\t\t\t\t".'<li class="err">'.$cur_error.'</li>'."\n";
 ?>
 			</ul>
 		</div>
@@ -706,10 +676,21 @@ if (!empty($errors))
 <?php
 
 }
-else if (isset($_POST['preview']))
+
+if (isset($_POST['preview']))
+//else if (isset($_POST['preview']))
+
 {
 	require_once PUN_ROOT.'include/parser.php';
 	$preview_message = parse_message($message, $hide_smilies);
+
+/************ BEGIN DEBUG OUTPUT CODE ***************/
+if (defined('DBUG')) {       // perform benchmarking of parse_message()
+	$bd = benchmark_12('parse_message', $message, .33, FALSE, $hide_smilies); // Speed check.
+	$preview_message .= '<p class="debug" title="from post.php">'. $bd['msg'] .'</p>';
+}
+/************ END DEBUG OUTPUT CODE ***************/
+if (count($errors) > 0) $message =& $orig_message;
 
 ?>
 <div id="postpreview" class="blockpost">
@@ -762,7 +743,7 @@ if ($pun_user['is_guest'])
 if ($fid): ?>
 						<label class="required"><strong><?php echo $lang->t('Subject') ?> <span><?php echo $lang->t('Required') ?></span></strong><br /><input class="longinput" type="text" name="req_subject" value="<?php if (isset($_POST['req_subject'])) echo pun_htmlspecialchars($subject); ?>" size="80" maxlength="70" tabindex="<?php echo $cur_index++ ?>" /><br /></label>
 <?php endif; ?>						<label class="required"><strong><?php echo $lang->t('Message') ?> <span><?php echo $lang->t('Required') ?></span></strong><br />
-						<textarea name="req_message" rows="20" cols="95" tabindex="<?php echo $cur_index++ ?>"><?php echo isset($_POST['req_message']) ? pun_htmlspecialchars($orig_message) : (isset($quote) ? $quote : ''); ?></textarea><br /></label>
+ 						<textarea name="req_message" rows="20" cols="95" tabindex="<?php echo $cur_index++ ?>"><?php echo isset($_POST['req_message']) ? pun_htmlspecialchars($message) : (isset($quote) ? $quote : ''); ?></textarea><br /></label>
 						<ul class="bblinks">
 							<li><span><a href="help.php#bbcode" onclick="window.open(this.href); return false;"><?php echo $lang->t('BBCode') ?></a> <?php echo ($pun_config['p_message_bbcode'] == '1') ? $lang->t('on') : $lang->t('off'); ?></span></li>
 							<li><span><a href="help.php#img" onclick="window.open(this.href); return false;"><?php echo $lang->t('img tag') ?></a> <?php echo ($pun_config['p_message_bbcode'] == '1' && $pun_config['p_message_img_tag'] == '1') ? $lang->t('on') : $lang->t('off'); ?></span></li>

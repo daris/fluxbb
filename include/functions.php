@@ -2222,3 +2222,164 @@ function dump()
 	echo '</pre>';
 	exit;
 }
+
+
+
+/* Convert open urls into clickable links. */
+function linkify($text) {
+	return preg_replace_callback('/ # Rev:20110220_1200 github.com\/jmrware\/LinkifyURL
+	# Match http & ftp URL that is not already linkified.
+	  # Alternative 1: URL delimited by (parentheses).
+	  (\()					   # $1	 "(" start delimiter.
+	  ((?:ht|f)tps?:\/\/[a-z0-9\-._~!$&\'()*+,;=:\/?#[\]@%]+)  # $2: URL.
+	  (\))					   # $3: ")" end delimiter.
+	| # Alternative 2: URL delimited by [square brackets].
+	  (\[)					   # $4: "[" start delimiter.
+	  ((?:ht|f)tps?:\/\/[a-z0-9\-._~!$&\'()*+,;=:\/?#[\]@%]+)  # $5: URL.
+	  (\])					   # $6: "]" end delimiter.
+	| # Alternative 3: URL delimited by {curly braces}.
+	  (\{)					   # $7: "{" start delimiter.
+	  ((?:ht|f)tps?:\/\/[a-z0-9\-._~!$&\'()*+,;=:\/?#[\]@%]+)  # $8: URL.
+	  (\})					   # $9: "}" end delimiter.
+	| # Alternative 4: URL delimited by <angle brackets>.
+	  (<|&(?:lt|\#60|\#x3c);)  # $10: "<" start delimiter (or HTML entity).
+	  ((?:ht|f)tps?:\/\/[a-z0-9\-._~!$&\'()*+,;=:\/?#[\]@%]+)  # $11: URL.
+	  (>|&(?:gt|\#62|\#x3e);)  # $12: ">" end delimiter (or HTML entity).
+	| # Alternative 5: URL not delimited by (), [], {} or <>.
+	  (						   # $13: Prefix proving URL not already linked.
+		(?: ^				   # Can be a beginning of line or string, or
+		| [^=\s\'"\]]		   # a non-"=", non-quote, non-"]", followed by
+		) \s*[\'"]?			   # optional whitespace and optional quote;
+	  | [^=\s]\s+			   # or... a non-equals sign followed by whitespace.
+	  )						   # End $13. Non-prelinkified-proof prefix.
+	  ( \b					   # $14: Other non-delimited URL.
+		(?:ht|f)tps?:\/\/	   # Required literal http, https, ftp or ftps prefix.
+		[a-z0-9\-._~!$\'()*+,;=:\/?#[\]@%]+ # All URI chars except "&" (normal*).
+		(?:					   # Either on a "&" or at the end of URI.
+		  (?!				   # Allow a "&" char only if not start of an...
+			&(?:gt|\#0*62|\#x0*3e);					 # HTML ">" entity, or
+		  | &(?:amp|apos|quot|\#0*3[49]|\#x0*2[27]); # a [&\'"] entity if
+			[.!&\',:?;]?		# followed by optional punctuation then
+			(?:[^a-z0-9\-._~!$&\'()*+,;=:\/?#[\]@%]|$)	# a non-URI char or EOS.
+		  ) &				   # If neg-assertion true, match "&" (special).
+		  [a-z0-9\-._~!$\'()*+,;=:\/?#[\]@%]* # More non-& URI chars (normal*).
+		)*					   # Unroll-the-loop (special normal*)*.
+		[a-z0-9\-_~$()*+=\/#[\]@%]	# Last char can\'t be [.!&\',;:?]
+	  )						   # End $14. Other non-delimited URL.
+	/imx', '_linkify_callback', $text);
+//	  $url_replace = '$1$4$7$10$13[url]$2$5$8$11$14[/url]$3$6$9$12';
+}
+function _linkify_callback($m) { // Only linkify valid urls.
+	$url = $m[2] . $m[5] . $m[8] . $m[11] . $m[14];
+	if (is_array($u = url_valid($url))) {
+		if (preg_match('%\.(?:jpe?g|gif|png)$%Si', $u['path_abempty']))
+			return	$m[1].$m[4].$m[7].$m[10].$m[13] .'[img]'. $u['url'] .'[/img]'. $m[3].$m[6].$m[9].$m[12];
+		else
+			return	$m[1].$m[4].$m[7].$m[10].$m[13] .'[url]'. $u['url'] .'[/url]'. $m[3].$m[6].$m[9].$m[12];
+	}
+	else
+		return	$m[1].$m[4].$m[7].$m[10].$m[13].		$url.			   $m[3].$m[6].$m[9].$m[12];
+}
+/*----------------------------------------------------------------------------
+ function benchmark_12($funcname, $p1, $reptime = 1.0, $verbose = true, $p2 = NULL) {}
+	By: Jeff Roberson
+	Created:		2010-03-17
+	Last edited:	2011-02-14
+
+Discussion:
+	This function measures the time required to execute a given function by
+	calling it as many times as possible within an allowed period == $reptime.
+	A first pass determines a rough measurement of function execution time
+	by increasing the $nreps count by a factor of 10 - (i.e. 1, 10, 100, ...),
+	until an $nreps value is found which takes more than 0.01 secs to finish.
+	A second pass uses the value determined in the first pass to compute the
+	number of reps that can be performed within the alloted $reptime seconds.
+	The second pass then measures the time required to call the function the
+	computed number of times (which should take about $reptime seconds). The
+	average function execution time is then computed by dividing the total
+	measured elapsed time by the number of reps performed in that time, and
+	then all the pertinent values are returned to the caller in an array.
+
+	Note that this function is limited to measuring only those functions
+	having one or two arguments and return value that are passed by value and
+	not by reference. This is why the name of this function ends with "12".
+	Variations of this function can be easily cloned which can have more
+	than one or two parameters.
+
+Parameters:
+	$funcname:	String containing name of function to be measured. The
+				function to be measured must take one or two parameters.
+	$p1:		First (required) argument to be passed to $funcname function.
+	$reptime	Target number of seconds allowed for benchmark test.
+				(float) (Default=1.0)
+	$verbose	Boolean value determines if results are printed.
+				(bool) (Default=true)
+	$p2:		Second (optional) argument to be passed to $funcname function.
+Return value:
+	$result[]	Array containing measured and computed values:
+	$result['funcname']		: $funcname - Name of function measured.
+	$result['msg']			: $msg - String with formatted results.
+	$result['nreps']		: $nreps - Number of function calls made.
+	$result['time_total']	: $time - Seconds to call function $nreps times.
+	$result['time_func']	: $t_func - Seconds to call function once.
+	$result['result']		: $result - Last value returned by function.
+
+Variables:
+	$time:		Float epoch time (secs since 1/1/1970) or benchmark elapsed secs.
+	$i:			Integer loop counter.
+	$nreps		Number of times function called in benchmark measurement loops.
+
+---------------------------------------------------------------------------*/
+function benchmark_12($funcname, $p1, $reptime = 1.0, $verbose = false, $p2 = NULL) {
+	if (!function_exists($funcname)) {
+		exit("\n[benchmark1] Error: function \"{$funcname}()\" does not exist.\n");
+	}
+	if (!isset($p2)) { // Case 1: function takes one parameter ($p1).
+	// Pass 1: Measure order of magnitude number of calls needed to exceed 10 milliseconds.
+		for ($time = 0.0, $n = 1; $time < 0.01; $n *= 10) { // Exponentially increase $nreps.
+			$time = microtime(true);			// Mark start time. (sec since 1970).
+			for ($i = 0; $i < $n; ++$i) {		// Loop $n times. ($n = 1, 10, 100...)
+				$result = ($funcname($p1));		// Call the function over and over...
+			}
+			$time = microtime(true) - $time;	// Mark stop time. Compute elapsed secs.
+			$nreps = $n;						// Number of reps just measured.
+		}
+		$t_func = $time / $nreps;				// Function execution time in sec (rough).
+	// Pass 2: Measure time required to perform $nreps function calls (in about $reptime sec).
+		if ($t_func < $reptime) {				// If pass 1 time was not pathetically slow...
+			$nreps = (int)($reptime / $t_func); // Figure $nreps calls to add up to $reptime.
+			$time = microtime(true);			// Mark start time. (sec since 1970).
+			for ($i = 0; $i < $nreps; ++$i) {	// Loop $nreps times (should take $reptime).
+				$result = ($funcname($p1));		// Call the function over and over...
+			}
+			$time = microtime(true) - $time;	// Mark stop time. Compute elapsed secs.
+			$t_func = $time / $nreps;			// Average function execution time in sec.
+		}
+	} else { // Case 2: function takes two parameters ($p1 and $p2).
+	// Pass 1: Measure order of magnitude number of calls needed to exceed 10 milliseconds.
+		for ($time = 0.0, $n = 1; $time < 0.01; $n *= 10) { // Exponentially increase $nreps.
+			$time = microtime(true);			// Mark start time. (sec since 1970).
+			for ($i = 0; $i < $n; ++$i) {		// Loop $n times. ($n = 1, 10, 100...)
+				$result = ($funcname($p1, $p2));	 // Call the function over and over...
+			}
+			$time = microtime(true) - $time;	// Mark stop time. Compute elapsed secs.
+			$nreps = $n;						// Number of reps just measured.
+		}
+		$t_func = $time / $nreps;				// Function execution time in sec (rough).
+	// Pass 2: Measure time required to perform $nreps function calls (in about $reptime sec).
+		if ($t_func < $reptime) {				// If pass 1 time was not pathetically slow...
+			$nreps = (int)($reptime / $t_func); // Figure $nreps calls to add up to $reptime.
+			$time = microtime(true);			// Mark start time. (sec since 1970).
+			for ($i = 0; $i < $nreps; ++$i) {	// Loop $nreps times (should take $reptime).
+				$result = ($funcname($p1, $p2));	 // Call the function over and over...
+			}
+			$time = microtime(true) - $time;	// Mark stop time. Compute elapsed secs.
+			$t_func = $time / $nreps;			// Average function execution time in sec.
+		}
+	}
+	$msg = sprintf("%s() Nreps:%7d	Time:%7.3f s  Function time: %.6f sec\n",
+			$funcname, $nreps, $time, $t_func);
+	if ($verbose) echo($msg);
+	return array('funcname' => $funcname, 'msg' => $msg, 'nreps' => $nreps,
+		'time_total' => $time, 'time_func' => $t_func, 'result' => $result);
+}

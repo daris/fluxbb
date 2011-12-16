@@ -136,12 +136,12 @@
 	}
 
 .pun .usercontent ul, .pun .postmsg ul {
-	padding: 0.75em 1em 0.75em 2.5em;
+	padding: 0.75em 1em 0.75em 4.5em;
 	list-style: disc
 	}
 
 .pun .usercontent ol, .pun .postmsg ol {
-	padding: 0.75em 1em 0.75em 2.5em;
+	padding: 0.75em 1em 0.75em 4.5em;
 	list-style: decimal
 	}
 
@@ -196,7 +196,7 @@
 	}
 
 .pun .postmsg ins, #punhelp samp ins {
-	text-decoration: none;
+	text-decoration: underline;
 	}
 
 .pun div.postmsg h5, #punhelp h5 {
@@ -915,7 +915,7 @@ html, body {
 	padding-bottom: 10px
 	}
 
-.pun .codebox pre code {
+.pun .codebox pre {
 	display: block;
 	padding: 0.75em;
 	}
@@ -1071,10 +1071,6 @@ body {
 	color: #a19e96
 	}
 
-.pun .postmsg ins, #punhelp samp ins {
-	background-color: #ff0;
-	}
-
 .pun hr {
 	background-color: #606060;
 	color: #606060
@@ -1168,4 +1164,26 @@ body {
 
 .pun .inew .icon {
 	border-color: #f6b620 #ecae1f #d09a1b #e1a61d
+	}
+/* Extra parser stuff
+-----------------------------------------------------------------*/
+.pun p.debug {
+	color: yellow;
+	background-color: #333;
+	border: 1px yellow solid;
+	padding: .5em;
+}
+.pun .err {
+	color: #FFF;
+	background-color: #A00;
+}
+.regex_err {
+	color: #FFF; background-color: #F00;
+	}
+.regex_hl {
+	color: #FFF; background-color: #060;
+	}
+.regex, .regex_x {
+	color: #FFF;
+	background: #2A2A2A;
 	}

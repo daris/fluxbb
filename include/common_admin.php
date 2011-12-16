@@ -53,6 +53,7 @@ function generate_admin_menu($page = '')
 					<li<?php if ($page == 'groups') echo ' class="isactive"'; ?>><a href="admin_groups.php"><?php echo $lang->t('User groups') ?></a></li>
 					<li<?php if ($page == 'censoring') echo ' class="isactive"'; ?>><a href="admin_censoring.php"><?php echo $lang->t('Censoring') ?></a></li>
 					<li<?php if ($page == 'ranks') echo ' class="isactive"'; ?>><a href="admin_ranks.php"><?php echo $lang->t('Ranks') ?></a></li>
+ 					<li<?php if ($page == 'parser') echo ' class="isactive"'; ?>><a href="admin_parser.php"><?php echo $lang->t('Parser') ?></a></li>
 					<li<?php if ($page == 'maintenance') echo ' class="isactive"'; ?>><a href="admin_maintenance.php"><?php echo $lang->t('Maintenance') ?></a></li>
 				</ul>
 			</div>
@@ -79,9 +80,9 @@ function prune($forum_id, $prune_sticky, $prune_date)
 	// Fetch topics to prune
 	$query = $db->select(array('id' => 't.id'), 'topics AS t');
 	$query->where = 't.forum_id = :forum_id';
-	
+
 	$params = array(':forum_id' => $forum_id);
-	
+
 	if ($prune_date != -1)
 	{
 		$query->where .= ' AND t.last_post < :prune_date';
@@ -89,9 +90,9 @@ function prune($forum_id, $prune_sticky, $prune_date)
 	}
 	if (!$prune_sticky)
 		$query->where .= ' AND t.sticky = 0';
-	
+
 	$result = $query->run($params);
-	
+
 	$topic_ids = array();
 	foreach ($result as $row)
 		$topic_ids[] = $row['id'];
@@ -102,11 +103,11 @@ function prune($forum_id, $prune_sticky, $prune_date)
 		// Fetch posts to prune
 		$query = $db->select(array('id' => 'p.id'), 'posts AS p');
 		$query->where = 'p.topic_id IN :topic_ids';
-		
+
 		$params = array(':topic_ids' => $topic_ids);
-		
+
 		$result = $query->run($params);
-		
+
 		$post_ids = array();
 		foreach ($result as $row)
 			$post_ids[] = $row['id'];
@@ -117,30 +118,30 @@ function prune($forum_id, $prune_sticky, $prune_date)
 			// Delete topics
 			$query = $db->delete('topics');
 			$query->where = 'id IN :topic_ids';
-			
+
 			$params = array(':topic_ids' => $topic_ids);
-			
+
 			$query->run($params);
 			unset($query, $params);
-			
+
 			// Delete subscriptions
 			$query = $db->delete('topic_subscriptions');
 			$query->where = 'topic_id IN :topic_ids';
-			
+
 			$params = array(':topic_ids' => $topic_ids);
-			
+
 			$query->run($params);
 			unset($query, $params);
-			
+
 			// Delete posts
 			$query = $db->delete('posts');
 			$query->where = 'id IN :post_ids';
-			
+
 			$params = array(':post_ids' => $post_ids);
-			
+
 			$query->run($params);
 			unset($query, $params);
-			
+
 			// We removed a bunch of posts, so now we have to update the search index
 			require_once PUN_ROOT.'include/search_idx.php';
 			strip_search_index($post_ids);

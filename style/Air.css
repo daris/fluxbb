@@ -1685,3 +1685,28 @@ html, body, .pun {
 .pun .inew .icon {
 	border-color: #91b3d9 #87a8d1 #6c85bb #7292c3;
 }
+/* Extra parser stuff
+-----------------------------------------------------------------*/
+.regex_err {
+	color: #FFF; background-color: #F00;
+	}
+
+.regex_hl {
+/*	color: #FFF; background-color: #060; */
+/*	color: #FFF; background-color: #088; */
+	color: #FFF; background-color: #060;
+	}
+.regex, .regex_x {
+	color: #FFF;
+	background: #2A2A2A;
+	}
+.pun p.debug {
+	color: yellow;
+	background-color: #333;
+	border: 1px yellow solid;
+	padding: .5em;
+}
+.pun .err {
+	color: #FFF;
+	background-color: #A00;
+}

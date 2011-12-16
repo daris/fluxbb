@@ -422,3 +422,91 @@ msgstr "%s PiB"
 msgid "Size unit EiB"
 msgstr "%s EiB"
 
+# New 2011 parser strings.
+# Error 1
+msgid "BBerr pcre"
+msgstr "(%s) Message is too long or too complex. Please shorten."
+
+# Error 2
+msgid "BBerr unexpected attribute"
+msgstr "Unexpected attribute: "%1$s". (No attribute allowed for (%2$s)."
+
+# Error 3
+msgid "BBerr unrecognized attribute"
+msgstr "Unrecognized attribute: "%1$s", is not valid for (%2$s)."
+
+# Error 4
+msgid "BBerr bbcode attribute"
+msgstr "Attribute may NOT contain open or close bbcode tags"
+
+# Error 5
+msgid "BBerr missing attribute"
+msgstr "(%1$s) is missing a required attribute."
+
+# Error 6
+msgid "BBerr nesting overflow"
+msgstr "(%1$s) tag nesting depth: %2$d exceeds allowable limit: %3$d."
+
+# Error 7
+msgid "BBerr self-nesting"
+msgstr "(%s) was opened within itself, this is not allowed."
+
+# Error 8
+msgid "BBerr invalid nesting"
+msgstr "(%1$s) was opened within (%2$s), this is not allowed."
+
+# Error 9
+msgid "BBerr invalid parent"
+msgstr "(%1$s) cannot be within: (%2$s). Allowable parent tags: %3$s."
+
+# Error 10
+msgid "BBerr Invalid URL name"
+msgstr "Invalid URL name: %s"
+
+# Error 10c
+msgid "BBerr Invalid email address"
+msgstr "Invalid email address: %s"
+
+# Error 11
+msgid "BBerr Invalid color"
+msgstr "Invalid color attribute: %s"
+
+# Error 12
+msgid "BBerr invalid content"
+msgstr "Invalid content, (%s) requires specific content."
+
+# Error 13
+msgid "BBerr bad meta data"
+msgstr "Unable to retrieve image data from remote url: %s"
+
+# Error 14
+msgid "BBerr no file size"
+msgstr "Unable to determine remote file size."
+
+# Error 15
+msgid "BBerr non image"
+msgstr "Remote url does not have Content-Type: \"image\"."
+
+# Error 16
+msgid "BBerr bad http response"
+msgstr "Bad HTTP response header: \"%s\""
+
+# Error 17
+msgid "BBerr bad headers"
+msgstr "Unable to read remote image http headers."
+
+# Error 18
+msgid "BBerr orphan close"
+msgstr "Orphan close tag: (/%s) is missing its open tag."
+
+# Error 19
+msgid "BBerr orphan open"
+msgstr "Orphan open tag: (%s) is missing its close tag."
+
+# Msg 1
+msgid "BBmsg big image"
+msgstr "Big image"
+
+# Msg 2
+msgid "BBmsg images disabled"
+msgstr "Image display not currently enabled in this context"

@@ -36,6 +36,9 @@ msgstr "User groups"
 msgid "Options"
 msgstr "Options"
 
+msgid "Parser"
+msgstr "Parser"
+
 msgid "Permissions"
 msgstr "Permissions"
 

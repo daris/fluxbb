@@ -95,6 +95,18 @@ if (defined('PUN_ADMIN_CONSOLE'))
 		echo '<link rel="stylesheet" type="text/css" href="style/imports/base_admin.css" />'."\n";
 }
 
+// Code to implement CODE syntax highlighting through Javascript.
+// Add the highlighter CSS file here in case its needed. Removed
+// by footer if there are no CODE tags with highlighting.
+if (defined('PUN_PARSER'))
+{
+	if (isset($pd['config']['syntax_style']) &&
+			file_exists(PUN_ROOT .'bin/'. $pd['config']['syntax_style'])) {
+		echo('<link rel="stylesheet" type="text/css" href="bin/'.
+			$pd['config']['syntax_style'] ."\" />\n");
+	}
+}
+
 if (isset($required_fields))
 {
 	// Output JavaScript to validate form (make sure required fields are filled out)

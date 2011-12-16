@@ -88,7 +88,7 @@ if (isset($_POST['form_sent']))
 	}
 
 	// Clean up message from POST
-	$message = pun_linebreaks(pun_trim($_POST['req_message']));
+	$orig_message = $message = pun_linebreaks(pun_trim($_POST['req_message']));
 
 	// Here we use strlen() not pun_strlen() as we want to limit the post to PUN_MAX_POSTSIZE bytes, not characters
 	if (strlen($message) > PUN_MAX_POSTSIZE)
@@ -204,7 +204,7 @@ if (!empty($errors))
 <?php
 
 	foreach ($errors as $cur_error)
-		echo "\t\t\t\t".'<li><strong>'.$cur_error.'</strong></li>'."\n";
+		echo "\t\t\t\t".'<li class="err">'.$cur_error.'</li>'."\n";
 ?>
 			</ul>
 		</div>
@@ -214,10 +214,11 @@ if (!empty($errors))
 <?php
 
 }
-else if (isset($_POST['preview']))
+if (isset($_POST['preview']))
 {
 	require_once PUN_ROOT.'include/parser.php';
 	$preview_message = parse_message($message, $hide_smilies);
+	if (!empty($errors)) $message =& $orig_message;
 
 ?>
 <div id="postpreview" class="blockpost">
