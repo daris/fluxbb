@@ -13,3 +13,6 @@
 [submodule "modules/gettext"]
 	path = modules/gettext
 	url = git@github.com:fluxbb/gettext.git
+[submodule "modules/parser"]
+	path = modules/parser
+	url = git@github.com:fluxbb/parser.git
