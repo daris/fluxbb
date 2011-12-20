@@ -180,7 +180,7 @@ if (isset($_POST['form_sent']))
 		if ($pun_config['o_mailing_list'] != '')
 		{
 			require_once PUN_ROOT.'modules/utf8/php-utf8.php';
-			require_once PUN_ROOT.'modules/mailer/mailer.php';
+			require_once PUN_ROOT.'modules/mailer/src/Mailer.php';
 
 			// If we previously found out that the email was banned
 			if ($banned_email)
@@ -200,7 +200,7 @@ if (isset($_POST['form_sent']))
 
 				// Load mailer if it has not been loaded yet
 				if (!isset($mailer))
-					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+					$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 				// Send mail
 				$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
@@ -224,7 +224,7 @@ if (isset($_POST['form_sent']))
 
 				// Load mailer if it has not been loaded yet
 				if (!isset($mailer))
-					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+					$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 				// Send mail
 				$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
@@ -248,7 +248,7 @@ if (isset($_POST['form_sent']))
 
 				// Load mailer if it has not been loaded yet
 				if (!isset($mailer))
-					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+					$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 				// Send mail
 				$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
@@ -259,7 +259,7 @@ if (isset($_POST['form_sent']))
 		if ($pun_config['o_regs_verify'] == '1')
 		{
 			require_once PUN_ROOT.'modules/utf8/php-utf8.php';
-			require_once PUN_ROOT.'modules/mailer/mailer.php';
+			require_once PUN_ROOT.'modules/mailer/src/Mailer.php';
 
 			// Load the "welcome" template
 			$mail_tpl = trim(file_get_contents(PUN_ROOT.'lang/'.$pun_user['language'].'/mail_templates/welcome.tpl'));
@@ -278,7 +278,7 @@ if (isset($_POST['form_sent']))
 
 			// Load mailer if it has not been loaded yet
 			if (!isset($mailer))
-				$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+				$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 			// Send mail
 			$mailer->new_email($mail_subject, $mail_message)->send($email1);

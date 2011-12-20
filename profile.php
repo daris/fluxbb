@@ -271,7 +271,7 @@ else if ($action == 'change_email')
 
 		require PUN_ROOT.'include/email.php'; // Need this for is_valid_email function
 		require_once PUN_ROOT.'modules/utf8/php-utf8.php';
-		require_once PUN_ROOT.'modules/mailer/mailer.php';
+		require_once PUN_ROOT.'modules/mailer/src/Mailer.php';
 
 		// Validate the email address
 		$new_email = strtolower(trim($_POST['req_new_email']));
@@ -287,7 +287,7 @@ else if ($action == 'change_email')
 			{
 				// Load mailer if it has not been loaded yet
 				if (!isset($mailer))
-					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+					$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 				// Load the "banned email change" template
 				$mail_tpl = trim(file_get_contents(PUN_ROOT.'lang/'.$pun_user['language'].'/mail_templates/banned_email_change.tpl'));
@@ -339,7 +339,7 @@ else if ($action == 'change_email')
 
 				// Load mailer if it has not been loaded yet
 				if (!isset($mailer))
-					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+					$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 				// Send mail
 				$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
@@ -372,7 +372,7 @@ else if ($action == 'change_email')
 
 		// Load mailer if it has not been loaded yet
 		if (!isset($mailer))
-			$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+			$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 		// Send mail
 		$mailer->new_email($mail_subject, $mail_message)->send($new_email);

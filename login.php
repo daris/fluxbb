@@ -172,9 +172,9 @@ else if ($action == 'forget' || $action == 'forget_2')
 			if (!empty($result))
 			{
 				require_once PUN_ROOT.'modules/utf8/php-utf8.php';
-				require_once PUN_ROOT.'modules/mailer/mailer.php';
+				require_once PUN_ROOT.'modules/mailer/src/Mailer.php';
 
-				$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+				$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 				// Load the "activate password" template
 				$mail_tpl = trim(file_get_contents(PUN_ROOT.'lang/'.$pun_user['language'].'/mail_templates/activate_password.tpl'));

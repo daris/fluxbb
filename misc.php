@@ -140,11 +140,11 @@ else if (isset($_GET['email']))
 		$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
 		require_once PUN_ROOT.'modules/utf8/php-utf8.php';
-		require_once PUN_ROOT.'modules/mailer/mailer.php';
+		require_once PUN_ROOT.'modules/mailer/src/Mailer.php';
 
 		// Load mailer if it has not been loaded yet
 		if (!isset($mailer))
-			$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+			$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 		// Send mail
 		$email = $mailer->new_email($mail_subject, $mail_message);
@@ -297,9 +297,9 @@ else if (isset($_GET['report']))
 				$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
 				require_once PUN_ROOT.'modules/utf8/php-utf8.php';
-				require PUN_ROOT.'modules/mailer/mailer.php';
+				require PUN_ROOT.'modules/mailer/src/Mailer.php';
 
-				$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+				$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 				// Send mail
 				$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);

@@ -131,7 +131,7 @@ if ($pun_config === Cache::NOT_FOUND)
 
 // Setup mailer module configuration
 $flux_config['mail'] = array(
-	'type'		=> 'mail',
+	'type'		=> 'Mail',
 	'from' 		=> $pun_config['o_webmaster_email'],
 );
 if (!empty($pun_config['o_smtp_host']))
@@ -141,7 +141,7 @@ if (!empty($pun_config['o_smtp_host']))
 	else
 		$flux_config['mail']['host'] = $pun_config['o_smtp_host'];
 
-	$flux_config['mail']['type'] = 'smtp';
+	$flux_config['mail']['type'] = 'SMTP';
 	$flux_config['mail']['username'] = $pun_config['o_smtp_user'];
 	$flux_config['mail']['password'] = $pun_config['o_smtp_pass'];
 	$flux_config['mail']['ssl'] = $pun_config['o_smtp_ssl'];

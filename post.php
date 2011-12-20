@@ -288,9 +288,9 @@ if (isset($_POST['form_sent']))
 				{
 					require PUN_ROOT.'include/email.php'; // Need this for bbcode2email function
 					require_once PUN_ROOT.'modules/utf8/php-utf8.php';
-					require PUN_ROOT.'modules/mailer/mailer.php';
+					require PUN_ROOT.'modules/mailer/src/Mailer.php';
 
-					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+					$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 					$notification_emails = array();
 
@@ -438,9 +438,9 @@ if (isset($_POST['form_sent']))
 				{
 					require PUN_ROOT.'include/email.php'; // Need this for bbcode2email function
 					require_once PUN_ROOT.'modules/utf8/php-utf8.php';
-					require PUN_ROOT.'modules/mailer/mailer.php';
+					require PUN_ROOT.'modules/mailer/src/Mailer.php';
 
-					$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+					$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 					$notification_emails = array();
 
@@ -519,11 +519,11 @@ if (isset($_POST['form_sent']))
 		if ($pun_user['is_guest'] && $banned_email && $pun_config['o_mailing_list'] != '')
 		{
 			require_once PUN_ROOT.'modules/utf8/php-utf8.php';
-			require_once PUN_ROOT.'modules/mailer/mailer.php';
+			require_once PUN_ROOT.'modules/mailer/src/Mailer.php';
 
 			// Load mailer if it has not been loaded yet
 			if (!isset($mailer))
-				$mailer = MailTransport::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+				$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 			// Load the "banned email post" template
 			$mail_tpl = trim(file_get_contents(PUN_ROOT.'lang/'.$pun_user['language'].'/mail_templates/banned_email_post.tpl'));
