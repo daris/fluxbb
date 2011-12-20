@@ -10,7 +10,7 @@ define('PUN_ROOT', dirname(__FILE__).'/');
 require PUN_ROOT.'include/common.php';
 
 // Include UTF-8 function
-require PUN_ROOT.'modules/utf8/functions/substr_replace.php';
+require_once PUN_ROOT.'modules/utf8/functions/substr_replace.php';
 require PUN_ROOT.'modules/utf8/functions/strcasecmp.php';
 
 $action = isset($_GET['action']) ? $_GET['action'] : null;
@@ -887,7 +887,7 @@ else if (isset($_POST['delete_user']) || isset($_POST['delete_user_comply']))
 				<fieldset>
 					<legend><?php echo $lang->t('Confirm delete legend') ?></legend>
 					<div class="infldset">
-						<p><?php echo $lang->t('Confirmation info').' <strong>'.pun_htmlspecialchars($username).'</strong>.' ?></p>
+						<p><?php printf($lang->t('Confirmation info', ' <strong>'.pun_htmlspecialchars($username).'</strong>')) ?></p>
 						<div class="rbox">
 							<label><input type="checkbox" name="delete_posts" value="1" checked="checked" /><?php echo $lang->t('Delete posts') ?><br /></label>
 						</div>

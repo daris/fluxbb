@@ -342,7 +342,7 @@ if ($action == 'feed')
 
 			$item = array(
 				'id'			=>	$cur_post['id'],
-				'title'			=>	$cur_topic['first_post_id'] == $cur_post['id'] ? $cur_topic['subject'] : $lang->t('RSS reply').$cur_topic['subject'],
+				'title'			=>	$cur_topic['first_post_id'] == $cur_post['id'] ? $cur_topic['subject'] : $lang->t('RSS reply', $cur_topic['subject']),
 				'link'			=>	get_base_url(true).'/viewtopic.php?pid='.$cur_post['id'].'#p'.$cur_post['id'],
 				'description'		=>	$cur_post['message'],
 				'author'		=>	array(
@@ -440,7 +440,7 @@ if ($action == 'feed')
 		}
 
 		$now = time();
-		if (!isset($feed) || $feed === Cache::NOT_FOUND)
+		if (!isset($feed) || $feed === Flux_Cache::NOT_FOUND)
 		{
 			// Setup the feed
 			$feed = array(

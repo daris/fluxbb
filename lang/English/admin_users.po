@@ -6,10 +6,11 @@ msgstr ""
 "Last-Translator: Franz Liedke <franz@fluxbb.org>\n"
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=iso-8859-1\n"
+"Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 # Language definitions used in admin-users.php
+
 msgid "Non numeric message"
 msgstr "You entered a non-numeric value into a numeric only column."
 
@@ -116,7 +117,7 @@ msgstr "Search for users in the database. You can enter one or more terms to sea
 msgid "Username label"
 msgstr "Username"
 
-msgid "E-mail address label"
+msgid "Email address label"
 msgstr "Email address"
 
 msgid "Title label"
@@ -185,7 +186,7 @@ msgstr "Order by"
 msgid "Order by username"
 msgstr "Username"
 
-msgid "Order by e-mail"
+msgid "Order by email"
 msgstr "Email"
 
 msgid "Order by posts"
@@ -239,7 +240,7 @@ msgstr "Search Results"
 msgid "Results username head"
 msgstr "Username"
 
-msgid "Results e-mail head"
+msgid "Results email head"
 msgstr "Email"
 
 msgid "Results title head"
@@ -307,4 +308,3 @@ msgstr "The supplied IP address could not be found in the database."
 
 msgid "No match"
 msgstr "No match"
-

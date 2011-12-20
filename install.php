@@ -78,8 +78,8 @@ if (!defined('FORUM_CACHE_DIR'))
 	define('FORUM_CACHE_DIR', PUN_ROOT.'cache/');
 
 // Load the cache module
-require PUN_ROOT.'modules/cache/cache.php';
-$cache = Cache::load('file', array('dir' => FORUM_CACHE_DIR), 'varexport'); // TODO: Move this config into config.php
+require PUN_ROOT.'modules/cache/src/Cache.php';
+$cache = Flux_Cache::load('File', array('dir' => FORUM_CACHE_DIR), 'VarExport'); // TODO: Move this config into config.php
 // TODO: according to the comment above - how do you want to move this to config when it doesn't exist? :)
 
 // Load the language system
@@ -115,7 +115,7 @@ function generate_config_file()
 {
 	global $db_type, $db_host, $db_name, $db_username, $db_password, $db_prefix, $cookie_name, $cookie_seed, $base_url;
 
-	return '<?php'."\n\n".'$flux_config = array();'."\n\n".'$flux_config[\'db\'][\'type\'] = \''.$db_type."';\n".'$flux_config[\'db\'][\'host\'] = \''.$db_host."';\n".'$flux_config[\'db\'][\'dbname\'] = \''.addslashes($db_name)."';\n".'$flux_config[\'db\'][\'username\'] = \''.addslashes($db_username)."';\n".'$flux_config[\'db\'][\'password\'] = \''.addslashes($db_password)."';\n".'$flux_config[\'db\'][\'prefix\'] = \''.addslashes($db_prefix)."';\n\n".'$flux_config[\'cache\'][\'type\'] = '."'file';\n".'$flux_config[\'cache\'][\'dir\'] = PUN_ROOT.\'cache/\';'."\n\n".'$flux_config[\'cookie\'][\'name\'] = '."'".$cookie_name."';\n".'$flux_config[\'cookie\'][\'domain\'] = '."'';\n".'$flux_config[\'cookie\'][\'path\'] = '."'/';\n".'$flux_config[\'cookie\'][\'secure\'] = 0;'."\n".'$flux_config[\'cookie\'][\'seed\'] = \''.random_key(16, false, true).'\';'."\n\n".'$flux_config[\'base_url\'] = \''.$base_url.'\';'."\n\n".'define(\'PUN\', 1);'."\n";
+	return '<?php'."\n\n".'$flux_config = array();'."\n\n".'$flux_config[\'db\'][\'type\'] = \''.$db_type."';\n".'$flux_config[\'db\'][\'host\'] = \''.$db_host."';\n".'$flux_config[\'db\'][\'dbname\'] = \''.addslashes($db_name)."';\n".'$flux_config[\'db\'][\'username\'] = \''.addslashes($db_username)."';\n".'$flux_config[\'db\'][\'password\'] = \''.addslashes($db_password)."';\n".'$flux_config[\'db\'][\'prefix\'] = \''.addslashes($db_prefix)."';\n\n".'$flux_config[\'cache\'][\'type\'] = '."'File';\n".'$flux_config[\'cache\'][\'dir\'] = PUN_ROOT.\'cache/\';'."\n\n".'$flux_config[\'cookie\'][\'name\'] = '."'".$cookie_name."';\n".'$flux_config[\'cookie\'][\'domain\'] = '."'';\n".'$flux_config[\'cookie\'][\'path\'] = '."'/';\n".'$flux_config[\'cookie\'][\'secure\'] = 0;'."\n".'$flux_config[\'cookie\'][\'seed\'] = \''.random_key(16, false, true).'\';'."\n\n".'$flux_config[\'base_url\'] = \''.$base_url.'\';'."\n\n".'define(\'PUN\', 1);'."\n";
 }
 
 
@@ -216,11 +216,11 @@ else
 }
 
 // Check if the cache directory is writable
-if (!@is_writable(FORUM_CACHE_DIR))
+if (!forum_is_writable(FORUM_CACHE_DIR))
 	$alerts[] = $lang->t('Alert cache', FORUM_CACHE_DIR);
 
 // Check if default avatar directory is writable
-if (!@is_writable(PUN_ROOT.'img/avatars/'))
+if (!forum_is_writable(PUN_ROOT.'img/avatars/'))
 	$alerts[] = $lang->t('Alert avatar', PUN_ROOT.'img/avatars/');
 
 if (!isset($_POST['form_sent']) || !empty($alerts))
@@ -924,7 +924,7 @@ else
 	$avatars = in_array(strtolower(@ini_get('file_uploads')), array('on', 'true', '1')) ? 1 : 0;
 
 	// Insert config data
-	$config = array(
+	$pun_config = array(
 		'o_cur_version'				=> FORUM_VERSION,
 		'o_database_revision'		=> FORUM_DB_REVISION,
 		'o_searchindex_revision'	=> FORUM_SI_REVISION,
@@ -1006,7 +1006,7 @@ else
 
 	$query = $db->insert(array('conf_name' => ':conf_name', 'conf_value' => ':conf_value'), 'config');
 
-	foreach ($config as $conf_name => $conf_value)
+	foreach ($pun_config as $conf_name => $conf_value)
 	{
 		$params = array(':conf_name' => $conf_name, ':conf_value' => $conf_value);
 		$query->run($params);
@@ -1052,7 +1052,6 @@ else
 
 	// Index the test post so searching for it works
 	require PUN_ROOT.'include/search_idx.php';
-	$pun_config['o_default_lang'] = $default_lang;
 	update_search_index('post', 1, $message, $subject);
 
 	$db->commitTransaction();
@@ -1072,7 +1071,7 @@ else
 
 	// Attempt to write config.php and serve it up for download if writing fails
 	$written = false;
-	if (is_writable(PUN_ROOT))
+	if (forum_is_writable(PUN_ROOT))
 	{
 		$fh = @fopen(PUN_ROOT.'config.php', 'wb');
 		if ($fh)
