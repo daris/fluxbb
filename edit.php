@@ -99,8 +99,16 @@ if (isset($_POST['form_sent']))
 	// Validate BBCode syntax
 	if ($pun_config['p_message_bbcode'] == '1')
 	{
-		require_once PUN_ROOT.'modules/parser/src/Parser.php';
-		$parser = new Flux_Parser();
+		require PUN_ROOT.'modules/parser/src/Parser.php';
+		$pd = $cache->get('parser_data');
+
+		// Cache needs to be re-generated.
+		if ($pd === Flux_Cache::NOT_FOUND)
+		{
+			$pd = Flux_Parser::compile();
+			$cache->set('parser_data', $pd);
+		}
+		$parser = new Flux_Parser($pd);
 		$message = $parser->preparse_bbcode($message, $errors);
 	}
 
@@ -217,8 +225,16 @@ if (!empty($errors))
 }
 if (isset($_POST['preview']))
 {
-	require_once PUN_ROOT.'modules/parser/src/Parser.php';
-	$parser = new Flux_Parser();
+	require PUN_ROOT.'modules/parser/src/Parser.php';
+	$pd = $cache->get('parser_data');
+
+	// Cache needs to be re-generated.
+	if ($pd === Flux_Cache::NOT_FOUND)
+	{
+		$pd = Flux_Parser::compile();
+		$cache->set('parser_data', $pd);
+	}
+	$parser = new Flux_Parser($pd);
 
 	$preview_message = $parser->parse_message($message, $hide_smilies);
 	if (!empty($errors)) $message =& $orig_message;

@@ -217,7 +217,15 @@ define('PUN_ALLOW_INDEX', 1);
 define('PUN_ACTIVE_PAGE', 'index');
 
 require PUN_ROOT.'modules/parser/src/Parser.php';
-$parser = new Flux_Parser();
+$pd = $cache->get('parser_data');
+
+// Cache needs to be re-generated.
+if ($pd === Flux_Cache::NOT_FOUND)
+{
+	$pd = Flux_Parser::compile();
+	$cache->set('parser_data', $pd);
+}
+$parser = new Flux_Parser($pd);
 
 require PUN_ROOT.'header.php';
 
