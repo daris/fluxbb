@@ -350,9 +350,9 @@ if (isset($_POST['form_sent']))
 						if (isset($notification_emails[$cur_subscriber['language']]))
 						{
 							if ($cur_subscriber['notify_with_post'] == '0')
-								$mailer->new_email($notification_emails[$cur_subscriber['language']][0], $notification_emails[$cur_subscriber['language']][1])->send($cur_subscriber['email']);
+								$mailer->newEmail($notification_emails[$cur_subscriber['language']][0], $notification_emails[$cur_subscriber['language']][1])->send($cur_subscriber['email']);
 							else
-								$mailer->new_email($notification_emails[$cur_subscriber['language']][2], $notification_emails[$cur_subscriber['language']][3])->send($cur_subscriber['email']);
+								$mailer->newEmail($notification_emails[$cur_subscriber['language']][2], $notification_emails[$cur_subscriber['language']][3])->send($cur_subscriber['email']);
 						}
 					}
 
@@ -502,9 +502,9 @@ if (isset($_POST['form_sent']))
 						if (isset($notification_emails[$cur_subscriber['language']]))
 						{
 							if ($cur_subscriber['notify_with_post'] == '0')
-								$mailer->new_email($notification_emails[$cur_subscriber['language']][0], $notification_emails[$cur_subscriber['language']][1])->send($cur_subscriber['email']);
+								$mailer->newEmail($notification_emails[$cur_subscriber['language']][0], $notification_emails[$cur_subscriber['language']][1])->send($cur_subscriber['email']);
 							else
-								$mailer->new_email($notification_emails[$cur_subscriber['language']][2], $notification_emails[$cur_subscriber['language']][3])->send($cur_subscriber['email']);
+								$mailer->newEmail($notification_emails[$cur_subscriber['language']][2], $notification_emails[$cur_subscriber['language']][3])->send($cur_subscriber['email']);
 						}
 					}
 
@@ -539,7 +539,7 @@ if (isset($_POST['form_sent']))
 			$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
 			// Send mail
-			$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
+			$mailer->newEmail($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
 		}
 
 		// If the posting user is logged in, increment his/her post count

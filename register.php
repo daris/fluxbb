@@ -176,12 +176,19 @@ if (isset($_POST['form_sent']))
 
 		unset ($query, $params);
 
-		// If the mailing list isn't empty, we may need to send out some alerts
-		if ($pun_config['o_mailing_list'] != '')
+		// Load mailer module (only when we need it)
+		if (($pun_config['o_mailing_list'] != '' && ($banned_email || !empty($dupe_list) || $pun_config['o_regs_report'] == '1'))
+			|| $pun_config['o_regs_verify'] == '1')
 		{
 			require_once PUN_ROOT.'modules/utf8/php-utf8.php';
 			require_once PUN_ROOT.'modules/mailer/src/Mailer.php';
 
+			$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
+		}
+
+		// If the mailing list isn't empty, we may need to send out some alerts
+		if ($pun_config['o_mailing_list'] != '')
+		{
 			// If we previously found out that the email was banned
 			if ($banned_email)
 			{
@@ -198,12 +205,8 @@ if (isset($_POST['form_sent']))
 				$mail_message = str_replace('<profile_url>', get_base_url().'/profile.php?id='.$new_uid, $mail_message);
 				$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-				// Load mailer if it has not been loaded yet
-				if (!isset($mailer))
-					$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
-
 				// Send mail
-				$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
+				$mailer->newEmail($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
 			}
 
 			// If we previously found out that the email was a dupe
@@ -222,12 +225,8 @@ if (isset($_POST['form_sent']))
 				$mail_message = str_replace('<profile_url>', get_base_url().'/profile.php?id='.$new_uid, $mail_message);
 				$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-				// Load mailer if it has not been loaded yet
-				if (!isset($mailer))
-					$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
-
 				// Send mail
-				$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
+				$mailer->newEmail($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
 			}
 
 			// Should we alert people on the admin mailing list that a new user has registered?
@@ -246,21 +245,14 @@ if (isset($_POST['form_sent']))
 				$mail_message = str_replace('<profile_url>', get_base_url().'/profile.php?id='.$new_uid, $mail_message);
 				$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-				// Load mailer if it has not been loaded yet
-				if (!isset($mailer))
-					$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
-
 				// Send mail
-				$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
+				$mailer->newEmail($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
 			}
 		}
 
 		// Must the user verify the registration or do we log him/her in right now?
 		if ($pun_config['o_regs_verify'] == '1')
 		{
-			require_once PUN_ROOT.'modules/utf8/php-utf8.php';
-			require_once PUN_ROOT.'modules/mailer/src/Mailer.php';
-
 			// Load the "welcome" template
 			$mail_tpl = trim(file_get_contents(PUN_ROOT.'lang/'.$pun_user['language'].'/mail_templates/welcome.tpl'));
 
@@ -276,12 +268,8 @@ if (isset($_POST['form_sent']))
 			$mail_message = str_replace('<login_url>', get_base_url().'/login.php', $mail_message);
 			$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
-			// Load mailer if it has not been loaded yet
-			if (!isset($mailer))
-				$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
-
 			// Send mail
-			$mailer->new_email($mail_subject, $mail_message)->send($email1);
+			$mailer->newEmail($mail_subject, $mail_message)->send($email1);
 
 			message($lang->t('Reg email').' <a href="mailto:'.$pun_config['o_admin_email'].'">'.$pun_config['o_admin_email'].'</a>.', true);
 		}

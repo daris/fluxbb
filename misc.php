@@ -147,7 +147,7 @@ else if (isset($_GET['email']))
 			$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 		// Send mail
-		$email = $mailer->new_email($mail_subject, $mail_message);
+		$email = $mailer->newEmail($mail_subject, $mail_message);
 		$email->set_reply_to($pun_user['username'].'<'.$pun_user['email'].'>');
 		$email->send($recipient['email']);
 
@@ -302,7 +302,7 @@ else if (isset($_GET['report']))
 				$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 				// Send mail
-				$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
+				$mailer->newEmail($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
 			}
 		}
 

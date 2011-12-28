@@ -212,7 +212,7 @@ else if ($action == 'forget' || $action == 'forget_2')
 					$cur_mail_message = str_replace('<new_password>', $new_password, $cur_mail_message);
 
 					// Send mail
-					$mailer->new_email($mail_subject, $cur_mail_message)->send($email);
+					$mailer->newEmail($mail_subject, $cur_mail_message)->send($email);
 				}
 				unset($result);
 

@@ -303,7 +303,7 @@ else if ($action == 'change_email')
 				$mail_message = str_replace('<board_mailer>', $pun_config['o_board_title'], $mail_message);
 
 				// Send mail
-				$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
+				$mailer->newEmail($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
 			}
 		}
 
@@ -342,7 +342,7 @@ else if ($action == 'change_email')
 					$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 				// Send mail
-				$mailer->new_email($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
+				$mailer->newEmail($mail_subject, $mail_message)->send($pun_config['o_mailing_list']);
 			}
 		}
 		unset($query, $params, $result);
@@ -375,7 +375,7 @@ else if ($action == 'change_email')
 			$mailer = Flux_Mailer::load($flux_config['mail']['type'], $flux_config['mail']['from'], $flux_config['mail']);
 
 		// Send mail
-		$mailer->new_email($mail_subject, $mail_message)->send($new_email);
+		$mailer->newEmail($mail_subject, $mail_message)->send($new_email);
 
 		message($lang->t('Activate email sent').' <a href="mailto:'.$pun_config['o_admin_email'].'">'.$pun_config['o_admin_email'].'</a>.', true);
 	}
